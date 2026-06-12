@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Koje je radno vrijeme gradske uprave Grada Valpova?",
+    "expected_urls": ["https://valpovo.hr/kontakt/"]
+  },
+  {
+    "question": "Kako mogu podnijeti zahtjev za pristup informacijama?",
+    "expected_urls": ["https://valpovo.hr/pristup-informacijama/"]
+  },
+  {
+    "question": "Kada se odvozi glomazni otpad u Ladimirevcima?",
+    "expected_urls": ["https://valpovo.hr/komunalno-gospodarstvo/"]
+  }
+]

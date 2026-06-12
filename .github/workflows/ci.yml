@@ -1,0 +1,60 @@
+# CI — lint, type-check, build (GitHub Actions)
+#
+# NAPOMENA: GitHub Actions čita workflowe isključivo iz .github/workflows na
+# KORIJENU repozitorija. Kada projekt "valpovo-ai-informator" postane vlastiti
+# repozitorij (preporučeno), ova datoteka radi bez izmjena. Dok je projekt u
+# poddirektoriju, kopirajte je u korijen repozitorija (defaults.run.working-directory
+# je već postavljen).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: .  # u monorepu promijenite u: valpovo-ai-informator
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalacija ovisnosti
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build ne poziva vanjske servise; lažne vrijednosti zadovoljavaju validaciju ENV-a
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+          ANTHROPIC_API_KEY: ci-placeholder
+
+  # Opcionalno: smoke test API-ja nakon deploya (zahtijeva DEPLOY_URL tajnu)
+  smoke:
+    if: github.ref == 'refs/heads/main' && false  # uključite postavljanjem na true
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Smoke test /api/chat
+        run: |
+          curl -sf -X POST "$DEPLOY_URL/api/chat" \
+            -H 'Content-Type: application/json' \
+            -d '{"messages":[{"role":"user","content":"Koje je radno vrijeme gradske uprave?"}]}' \
+            | head -c 500
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
