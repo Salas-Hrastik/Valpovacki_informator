@@ -3,8 +3,8 @@
  *
  * Autorizacija:
  *  - Vercel Cron šalje zaglavlje "Authorization: Bearer <CRON_SECRET>" kada je
- *    u projektu postavljena ENV varijabla CRON_SECRET; mi koristimo vlastitu
- *    VERCEL_CRON_SECRET i prihvaćamo je i kroz "x-ingest-secret" (ručni pozivi).
+ *    u projektu postavljena ENV varijabla CRON_SECRET; ručni pozivi prihvaćaju
+ *    se i kroz zaglavlje "x-ingest-secret".
  *
  * Trajanje: maxDuration = 300 s (Vercel Pro). Ingestija ima vlastiti vremenski
  * limit (deadlineMs) i obrađuje najviše INGEST_MAX_URLS po pokretanju —
@@ -18,7 +18,7 @@ export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 function authorized(req: Request): boolean {
-  const secret = process.env.VERCEL_CRON_SECRET;
+  const secret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
   if (!secret) return false; // bez tajne ne dopuštamo pokretanje
   const bearer = req.headers.get('authorization');
   const custom = req.headers.get('x-ingest-secret');
