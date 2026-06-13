@@ -1,10 +1,11 @@
 /**
  * Ingestijski cjevovod: prikupljanje URL-ova → dohvat → ekstrakcija →
  * detekcija promjena (content_hash) → chunking → embedding → transakcijski
- * upsert u Supabase (RPC upsert_document_with_chunks).
+ * upsert u Supabase.
  *
- * Inkrementalno: dokument čiji se SHA-256 sadržaja nije promijenio NE
- * vektorizira se ponovno — samo mu se osvježi oznaka fetched_at.
+ * Optimizacija „svježine": dokument provjeren unutar FRESH_DAYS dana preskače
+ * se BEZ ponovnog dohvaćanja, pa uzastopna pokretanja brzo dođu do još
+ * neindeksiranog repa sitemapa (npr. noviji članci/natječaji).
  */
 import { createHash } from 'crypto';
 import { config } from '../config';
@@ -14,12 +15,18 @@ import { supabaseAdmin } from '../supabase';
 import { fetchResource, gatherUrls, sleep } from './crawler';
 import { extractFromHtml, extractFromPdf } from './extract';
 
+// Prozor svježine: kraći od tjednog crona (subota) da se tjedna provjera i
+// dalje izvršava, ali da uzastopna ručna pokretanja preskaču već obrađeno.
+const FRESH_DAYS = 6;
+const FRESH_MS = FRESH_DAYS * 24 * 60 * 60 * 1000;
+
 export interface IngestStats {
   totalUrls: number;
   processed: number;
-  inserted: number;   // novi dokumenti
-  updated: number;    // promijenjeni dokumenti (reindeksirani)
-  unchanged: number;  // nepromijenjeni (preskočeni)
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  skippedFresh: number;
   failed: number;
   failedUrls: string[];
   durationMs: number;
@@ -33,22 +40,32 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   const sb = supabaseAdmin();
   const stats: IngestStats = {
     totalUrls: 0, processed: 0, inserted: 0, updated: 0,
-    unchanged: 0, failed: 0, failedUrls: [], durationMs: 0,
+    unchanged: 0, skippedFresh: 0, failed: 0, failedUrls: [], durationMs: 0,
   };
 
   const urls = (await gatherUrls()).slice(0, maxUrls);
   stats.totalUrls = urls.length;
   console.log(`[ingest] Pronađeno ${urls.length} URL-ova za obradu.`);
 
-  // Postojeći hashevi — za detekciju promjena bez ponovne vektorizacije
-  const { data: existing } = await sb.from('dokumenti').select('url, content_hash');
-  const existingHash = new Map((existing ?? []).map((d) => [d.url, d.content_hash]));
+  // Postojeći dokumenti: hash (detekcija promjena) + fetched_at (svježina)
+  const { data: existing } = await sb.from('dokumenti').select('url, content_hash, fetched_at');
+  const existingMap = new Map(
+    (existing ?? []).map((d) => [d.url as string, { hash: d.content_hash as string, fetchedAt: d.fetched_at as string }]),
+  );
 
   for (const url of urls) {
     if (Date.now() > deadline) {
       console.warn('[ingest] Dosegnut vremenski limit izvršavanja — prekid (nastavlja se idući put).');
       break;
     }
+
+    // Preskoči nedavno provjerene dokumente BEZ dohvaćanja (probija plateau)
+    const prev = existingMap.get(url);
+    if (prev && prev.fetchedAt && Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS) {
+      stats.skippedFresh++;
+      continue;
+    }
+
     try {
       const resource = await fetchResource(url);
       if (!resource) continue;
@@ -58,25 +75,22 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
           ? await extractFromPdf(resource.buffer!, url)
           : extractFromHtml(resource.html!, url);
 
-      if (extracted.text.length < 80) continue; // prekratko = vjerojatno prazna/navigacijska stranica
+      if (extracted.text.length < 80) continue;
 
       const hash = createHash('sha256').update(extracted.text).digest('hex');
-      const previousHash = existingHash.get(url);
+      const previousHash = prev?.hash;
 
       if (previousHash === hash) {
-        // Nepromijenjeno → samo osvježi datum zadnje provjere
         await sb.rpc('touch_document', { p_url: url });
         stats.unchanged++;
         stats.processed++;
         continue;
       }
 
-      // Chunking + embedding
       const chunks = chunkText(extracted.text);
       if (chunks.length === 0) continue;
       const vectors = await embedTexts(chunks.map((c) => c.text));
 
-      // Transakcijski upsert (dokument + isječci + ugradnje u jednoj transakciji)
       const { error } = await sb.rpc('upsert_document_with_chunks', {
         p_doc: {
           url,
@@ -107,14 +121,14 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       stats.failedUrls.push(url);
       console.error(`[ingest] GREŠKA: ${url}`, e);
     }
-    await sleep(config.crawlDelayMs); // pristojnost prema izvorima
+    await sleep(config.crawlDelayMs);
   }
 
   stats.durationMs = Date.now() - startedAt;
   console.log(
     `[ingest] Završeno za ${Math.round(stats.durationMs / 1000)} s — ` +
       `novo: ${stats.inserted}, ažurirano: ${stats.updated}, nepromijenjeno: ${stats.unchanged}, ` +
-      `neuspjelo: ${stats.failed}`,
+      `preskočeno (svježe): ${stats.skippedFresh}, neuspjelo: ${stats.failed}`,
   );
   return stats;
 }
