@@ -1,11 +1,8 @@
 /**
- * Ingestijski cjevovod: prikupljanje URL-ova → dohvat → ekstrakcija →
- * detekcija promjena (content_hash) → chunking → embedding → transakcijski
- * upsert u Supabase.
- *
- * Optimizacija „svježine": dokument provjeren unutar FRESH_DAYS dana preskače
- * se BEZ ponovnog dohvaćanja, pa uzastopna pokretanja brzo dođu do još
- * neindeksiranog repa sitemapa (npr. noviji članci/natječaji).
+ * Ingestijski cjevovod s optimizacijom svježine.
+ * Postojeći dokumenti učitavaju se U STRANICAMA (Supabase vraća najviše 1000
+ * redaka po upitu) — inače se dokumenti preko 1000 ne bi prepoznavali i stalno
+ * bi se reobrađivali.
  */
 import { createHash } from 'crypto';
 import { config } from '../config';
@@ -15,10 +12,9 @@ import { supabaseAdmin } from '../supabase';
 import { fetchResource, gatherUrls, sleep } from './crawler';
 import { extractFromHtml, extractFromPdf } from './extract';
 
-// Prozor svježine: kraći od tjednog crona (subota) da se tjedna provjera i
-// dalje izvršava, ali da uzastopna ručna pokretanja preskaču već obrađeno.
 const FRESH_DAYS = 6;
 const FRESH_MS = FRESH_DAYS * 24 * 60 * 60 * 1000;
+const PAGE = 1000;
 
 export interface IngestStats {
   totalUrls: number;
@@ -47,11 +43,21 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   stats.totalUrls = urls.length;
   console.log(`[ingest] Pronađeno ${urls.length} URL-ova za obradu.`);
 
-  // Postojeći dokumenti: hash (detekcija promjena) + fetched_at (svježina)
-  const { data: existing } = await sb.from('dokumenti').select('url, content_hash, fetched_at');
-  const existingMap = new Map(
-    (existing ?? []).map((d) => [d.url as string, { hash: d.content_hash as string, fetchedAt: d.fetched_at as string }]),
-  );
+  // Učitaj SVE postojeće dokumente u stranicama po 1000 (obilazi Supabase limit)
+  const existingMap = new Map<string, { hash: string; fetchedAt: string }>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb
+      .from('dokumenti')
+      .select('url, content_hash, fetched_at')
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`Učitavanje postojećih dokumenata: ${error.message}`);
+    if (!data || data.length === 0) break;
+    for (const d of data) {
+      existingMap.set(d.url as string, { hash: d.content_hash as string, fetchedAt: d.fetched_at as string });
+    }
+    if (data.length < PAGE) break;
+  }
+  console.log(`[ingest] Učitano ${existingMap.size} postojećih dokumenata.`);
 
   for (const url of urls) {
     if (Date.now() > deadline) {
@@ -59,7 +65,6 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       break;
     }
 
-    // Preskoči nedavno provjerene dokumente BEZ dohvaćanja (probija plateau)
     const prev = existingMap.get(url);
     if (prev && prev.fetchedAt && Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS) {
       stats.skippedFresh++;
