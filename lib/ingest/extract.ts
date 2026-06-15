@@ -66,6 +66,30 @@ export async function extractFromPdf(buffer: Buffer, url: string): Promise<Extra
   };
 }
 
+/**
+ * Pronalazi poveznice na PDF dokumente unutar HTML stranice (npr. proračuni,
+ * odluke, zapisnici linkani iz /wp-content/uploads/). Vraća apsolutne URL-ove.
+ * Crawler ih ne vidi iz sitemapa, pa ih otkrivamo praćenjem poveznica.
+ */
+export function extractPdfLinks(html: string, baseUrl: string): string[] {
+  const $ = cheerio.load(html);
+  const out = new Set<string>();
+  $('a[href]').each((_, el) => {
+    const href = $(el).attr('href');
+    if (!href) return;
+    try {
+      const abs = new URL(href, baseUrl);
+      if (/\.pdf$/i.test(abs.pathname)) {
+        abs.hash = '';
+        out.add(abs.toString());
+      }
+    } catch {
+      /* nevažeći href — preskoči */
+    }
+  });
+  return [...out];
+}
+
 function fileNameFromUrl(url: string): string {
   try {
     const segments = new URL(url).pathname.split('/').filter(Boolean);

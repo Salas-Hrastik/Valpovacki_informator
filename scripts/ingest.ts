@@ -151,7 +151,12 @@ async function prune(apply: boolean): Promise<void> {
     if (data.length < 1000) break;
   }
 
-  const staleRows = existing.filter((d) => !corpus.has(d.url));
+  // PDF-ovi se otkrivaju praćenjem poveznica (nisu u sitemap-korpusu), pa ih
+  // NIKAD ne brišemo na temelju "nije u korpusu" — inače bi prune uklonio
+  // proračune/odluke/zapisnike koje smo namjerno ingestirali.
+  const staleRows = existing.filter(
+    (d) => !corpus.has(d.url) && !d.url.toLowerCase().endsWith('.pdf'),
+  );
   const stale = staleRows.map((d) => d.url);
   console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);
 
