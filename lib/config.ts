@@ -106,8 +106,8 @@ export const config = {
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
   embeddingDim: int('EMBEDDING_DIM', 1536),
 
-  ragTopK: int('RAG_TOP_K', 8),
-  ragScoreThreshold: float('RAG_SCORE_THRESHOLD', 0.35),
+  ragTopK: int('RAG_TOP_K', 12),
+  ragScoreThreshold: float('RAG_SCORE_THRESHOLD', 0.30),
   ragFtsFallback: process.env.RAG_FTS_FALLBACK !== '0',
   ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
 
