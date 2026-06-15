@@ -102,6 +102,81 @@ async function analyze(): Promise<void> {
   console.log('[analyze] Bez dohvaćanja sadržaja, embeddinga i upisa u bazu.');
 }
 
+/**
+ * Čišćenje (prune): briše iz baze dokumente kojih VIŠE NEMA u filtriranom korpusu
+ * (stare vijesti, galerije, objave bez datuma izbačene novim filtrom itd.).
+ * Cascade u shemi povlači i pripadne isječke i vektore.
+ *   npm run ingest -- --prune          → samo PREGLED (ništa se ne briše)
+ *   npm run ingest -- --prune --apply  → stvarno brisanje
+ * Sigurnosna brana: odbija brisati ako je svježe prikupljeni korpus sumnjivo malen
+ * (npr. sitemap privremeno nedostupan), da ne dođe do masovnog brisanja.
+ */
+async function prune(apply: boolean): Promise<void> {
+  const { gatherUrls } = await import('../lib/ingest/crawler');
+  const { supabaseAdmin } = await import('../lib/supabase');
+  const sb = supabaseAdmin();
+
+  const corpus = new Set(await gatherUrls()); // filtrirani, željeni skup
+  console.log(`[prune] Filtrirani korpus: ${corpus.size} URL-ova.`);
+
+  const MIN_CORPUS = 500;
+  if (corpus.size < MIN_CORPUS) {
+    console.error(
+      `[prune] PREKID: korpus (${corpus.size}) manji je od sigurnosnog praga (${MIN_CORPUS}). ` +
+        'Vjerojatno je neki sitemap privremeno nedostupan — ne brišem ništa.',
+    );
+    process.exit(1);
+  }
+
+  // Učitaj sve postojeće URL-ove iz baze (stranice po 1000)
+  const existing: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('dokumenti').select('url').range(from, from + 999);
+    if (error) throw new Error(`Učitavanje dokumenata: ${error.message}`);
+    if (!data || data.length === 0) break;
+    existing.push(...data.map((d) => d.url as string));
+    if (data.length < 1000) break;
+  }
+
+  const stale = existing.filter((u) => !corpus.has(u));
+  console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);
+
+  if (stale.length === 0) {
+    console.log('[prune] Nema zastarjelih dokumenata — baza je već usklađena s filtrom.');
+    return;
+  }
+
+  // Pregled po domeni + uzorci
+  const perHost = new Map<string, number>();
+  for (const u of stale) {
+    let host = '(nevažeći)';
+    try { host = new URL(u).hostname; } catch { /* ostavi */ }
+    perHost.set(host, (perHost.get(host) ?? 0) + 1);
+  }
+  console.log('[prune] Za brisanje po domeni:');
+  for (const [host, n] of [...perHost.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`   ${String(n).padStart(6)}  ${host}`);
+  }
+  console.log('[prune] Uzorci:');
+  for (const u of stale.slice(0, 10)) console.log(`     ${u}`);
+
+  if (!apply) {
+    console.log('\n[prune] PREGLED — ništa nije obrisano. Za stvarno brisanje: npm run ingest -- --prune --apply');
+    return;
+  }
+
+  // Brisanje u serijama (cascade uklanja isječke i vektore)
+  let deleted = 0;
+  for (let i = 0; i < stale.length; i += 500) {
+    const batch = stale.slice(i, i + 500);
+    const { error } = await sb.from('dokumenti').delete().in('url', batch);
+    if (error) throw new Error(`Brisanje serije: ${error.message}`);
+    deleted += batch.length;
+    console.log(`[prune] Obrisano ${deleted}/${stale.length}…`);
+  }
+  console.log(`\n[prune] Gotovo — obrisano ${deleted} dokumenata (uklj. isječke i vektore).`);
+}
+
 async function main(): Promise<void> {
   if (process.argv.includes('--analyze')) {
     await analyze();
@@ -109,6 +184,10 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes('--dry-run')) {
     await dryRun();
+    return;
+  }
+  if (process.argv.includes('--prune')) {
+    await prune(process.argv.includes('--apply'));
     return;
   }
   const { runIngest } = await import('../lib/ingest/pipeline');
