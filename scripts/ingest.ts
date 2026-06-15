@@ -141,17 +141,18 @@ async function prune(apply: boolean): Promise<void> {
     process.exit(1);
   }
 
-  // Učitaj sve postojeće URL-ove iz baze (stranice po 1000)
-  const existing: string[] = [];
+  // Učitaj sve postojeće dokumente (url + id) u stranicama po 1000
+  const existing: { url: string; id: string }[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await sb.from('dokumenti').select('url').range(from, from + 999);
+    const { data, error } = await sb.from('dokumenti').select('url, id').range(from, from + 999);
     if (error) throw new Error(`Učitavanje dokumenata: ${error.message}`);
     if (!data || data.length === 0) break;
-    existing.push(...data.map((d) => d.url as string));
+    for (const d of data) existing.push({ url: d.url as string, id: d.id as string });
     if (data.length < 1000) break;
   }
 
-  const stale = existing.filter((u) => !corpus.has(u));
+  const staleRows = existing.filter((d) => !corpus.has(d.url));
+  const stale = staleRows.map((d) => d.url);
   console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);
 
   if (stale.length === 0) {
@@ -178,14 +179,16 @@ async function prune(apply: boolean): Promise<void> {
     return;
   }
 
-  // Brisanje u serijama (cascade uklanja isječke i vektore)
+  // Brisanje po ID-u (kratki UUID) u manjim serijama — duga lista URL-ova u .in()
+  // napravi predugačak upit (Supabase vrati 400). Cascade uklanja isječke i vektore.
+  const ids = staleRows.map((d) => d.id);
   let deleted = 0;
-  for (let i = 0; i < stale.length; i += 500) {
-    const batch = stale.slice(i, i + 500);
-    const { error } = await sb.from('dokumenti').delete().in('url', batch);
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100);
+    const { error } = await sb.from('dokumenti').delete().in('id', batch);
     if (error) throw new Error(`Brisanje serije: ${error.message}`);
     deleted += batch.length;
-    console.log(`[prune] Obrisano ${deleted}/${stale.length}…`);
+    console.log(`[prune] Obrisano ${deleted}/${ids.length}…`);
   }
   console.log(`\n[prune] Gotovo — obrisano ${deleted} dokumenata (uklj. isječke i vektore).`);
 }
