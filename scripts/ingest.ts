@@ -20,7 +20,35 @@ function loadEnvLocal(): void {
 
 loadEnvLocal();
 
+/**
+ * Dry-run: samo prikupi URL-ove iz sitemapova/seedova (uz primijenjeni filtar
+ * bezvrijednih URL-ova) i ispiši koliko ih je po domeni — BEZ dohvaćanja sadržaja,
+ * embeddinga ili upisa u bazu. Korisno za provjeru da je korpus pao na ~1500–2500.
+ *   npm run ingest -- --dry-run
+ */
+async function dryRun(): Promise<void> {
+  const { gatherUrls } = await import('../lib/ingest/crawler');
+  const urls = await gatherUrls();
+
+  const perHost = new Map<string, number>();
+  for (const u of urls) {
+    let host = '(nevažeći)';
+    try { host = new URL(u).hostname; } catch { /* ostavi oznaku */ }
+    perHost.set(host, (perHost.get(host) ?? 0) + 1);
+  }
+
+  console.log(`\n[dry-run] Ukupno URL-ova nakon filtriranja: ${urls.length}\n`);
+  for (const [host, n] of [...perHost.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${String(n).padStart(6)}  ${host}`);
+  }
+  console.log('\n[dry-run] Bez dohvaćanja sadržaja, embeddinga i upisa u bazu.');
+}
+
 async function main(): Promise<void> {
+  if (process.argv.includes('--dry-run')) {
+    await dryRun();
+    return;
+  }
   const { runIngest } = await import('../lib/ingest/pipeline');
   const stats = await runIngest();
   if (stats.failedUrls.length > 0) {

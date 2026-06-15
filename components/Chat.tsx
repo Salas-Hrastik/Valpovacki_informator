@@ -5,6 +5,7 @@
  * Čita SSE stream s /api/chat i prikazuje odgovor s citatima izvora.
  */
 import { useCallback, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Source {
   title: string;
@@ -122,7 +123,22 @@ export default function Chat() {
         {messages.map((m, i) => (
           <div key={i} className={`msg msg-${m.role}`}>
             <div className="msg-bubble">
-              {m.content || (busy && i === messages.length - 1 ? '…' : '')}
+              {m.content ? (
+                <div className="msg-text">
+                  <ReactMarkdown
+                    components={{
+                      // Poveznice se otvaraju u novoj kartici, sigurno (noopener).
+                      a: ({ node, ...props }) => (
+                        <a target="_blank" rel="noopener noreferrer" {...props} />
+                      ),
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                busy && i === messages.length - 1 ? '…' : ''
+              )}
               {m.sources && m.sources.length > 0 && (
                 <div className="msg-sources">
                   <strong>Izvori:</strong>

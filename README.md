@@ -72,6 +72,8 @@ Dopuštene roditeljske domene (CSP `frame-ancestors`) podešavaju se u
 | Zadatak | Kako |
 |---|---|
 | Ručno pokretanje ingestije | `curl -X POST https://DOMENA/api/ingest -H "x-ingest-secret: $VERCEL_CRON_SECRET"` ili lokalno `npm run ingest` |
+| Provjera veličine korpusa | `npm run ingest -- --dry-run` (prebroji URL-ove po domeni nakon filtriranja; bez upisa u bazu) |
+| Filtriranje bezvrijednih URL-ova | `EXCLUDE_URL_PATTERNS` (zarezom odvojeno; PDF se nikad ne isključuje). Zadano: WP arhive/feedovi + slike/dokumenti |
 | Dodavanje novog izvora | Dopuniti `ALLOWED_HOSTS` i `SITEMAP_URLS`/`SEED_URLS` u Vercel ENV → redeploy → ingestija |
 | Promjena modela | `CLAUDE_MODEL` u Vercel ENV (bez izmjene koda) |
 | Promjena embeddinga | `EMBEDDING_*` ENV **+ uskladiti `vector(DIM)` u shemi + ponovna ingestija** |
