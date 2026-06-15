@@ -83,7 +83,11 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
     processedUrls.add(url);
 
     const prev = existingMap.get(url);
-    if (prev && prev.fetchedAt && Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS) {
+    if (
+      !config.ingestForce &&
+      prev && prev.fetchedAt &&
+      Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS
+    ) {
       stats.skippedFresh++;
       return;
     }

@@ -120,6 +120,9 @@ export const config = {
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),
   crawlDelayMs: int('CRAWL_DELAY_MS', 1000),
   ingestMaxUrls: int('INGEST_MAX_URLS', 2100),
+  // INGEST_FORCE=1 preskače provjeru svježine (obradi SVE stranice ovaj prolaz) —
+  // korisno za jednokratno otkrivanje svih PDF poveznica bez čekanja da stranice "ostare".
+  ingestForce: process.env.INGEST_FORCE === '1',
 
   lang: process.env.LANG_HR || process.env.LANG || 'hr',
 };
