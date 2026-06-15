@@ -67,12 +67,31 @@ const SEED_URLS_DEFAULT = [
 // i medijske datoteke). Provjeravaju se kao podniz unutar punog URL-a, neosjetljivo
 // na velika/mala slova. Nadjačivo ENV-om EXCLUDE_URL_PATTERNS (zarezom odvojeno).
 const EXCLUDE_URL_PATTERNS_DEFAULT = [
+  // WordPress arhive/feedovi/sistem
   '/tag/', '/page/', '/author/', '/category/', '/feed', '/wp-json',
   '?replytocom', '/attachment/', '/comment-page-', '/wp-content/uploads/',
+  // Galerije i listanja (plugin-stranice bez tekstualne vrijednosti)
+  '/rl_gallery/', '/kino-korner/', '/events/', '/eventi/', '/event/',
+  '/program-category/', '/kategorija-djelatnika/',
+  // Stare datumske arhive vijesti: izbacujemo godine <= 2024 (zadržavamo 2025./2026.).
+  // Uzorak "re:" se tretira kao regex; traži /GODINA/ omeđenu kosim crtama.
+  're:/(?:19\\d\\d|20[01]\\d|202[0-4])/',
   // Ekstenzije slika/dokumenata (PDF se NE isključuje — obrađuje se zasebno)
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico',
   '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
   '.zip', '.rar', '.7z', '.gz', '.mp3', '.mp4', '.avi', '.mov', '.css', '.js',
+];
+
+// Uzorci za PRESKAKANJE cijelih pod-sitemapova (provjera kao podniz pune sitemap-URL
+// adrese, case-insensitive). Tako izbacujemo npr. galerije, taksonomije i, host-ciljano,
+// "post" sitemap škole čije objave nemaju datum u URL-u. Nadjačivo ENV-om
+// EXCLUDE_SITEMAP_PATTERNS (zarezom odvojeno).
+const EXCLUDE_SITEMAP_PATTERNS_DEFAULT = [
+  'rl_gallery', 'gallery-sitemap', 'category-sitemap', 'author-sitemap',
+  'post_tag-sitemap', 'tag-sitemap', 'product-sitemap',
+  // Škola ss-valpovo.hr: ~3000 objava bez datuma (nefiltrabilno po URL-u) — izbacujemo
+  // njihov post-sitemap, a stalne stranice (page-sitemap) zadržavamo.
+  'ss-valpovo.hr/post-sitemap',
 ];
 
 export const config = {
@@ -92,6 +111,7 @@ export const config = {
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
   seedUrls: list('SEED_URLS', SEED_URLS_DEFAULT),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
+  excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),
   crawlDelayMs: int('CRAWL_DELAY_MS', 1000),

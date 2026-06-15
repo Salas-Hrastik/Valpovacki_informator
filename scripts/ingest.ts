@@ -52,7 +52,16 @@ async function dryRun(): Promise<void> {
  *   npm run ingest -- --analyze
  */
 async function analyze(): Promise<void> {
-  const { gatherUrls, isExcludedUrl } = await import('../lib/ingest/crawler');
+  const { gatherUrls, isExcludedUrl, mapSitemapTree } = await import('../lib/ingest/crawler');
+
+  // Stablo (pod-)sitemapova — pokazuje točna imena i veličine, te bi li ih
+  // trenutačni EXCLUDE_SITEMAP_PATTERNS preskočili (✗ = preskače se).
+  const tree = await mapSitemapTree();
+  console.log('\n[analyze] Pod-sitemapovi (✗ = trenutačno preskočeni):');
+  for (const n of [...tree].sort((a, b) => b.pageCount - a.pageCount)) {
+    console.log(`   ${n.excluded ? '✗' : '✓'} ${String(n.pageCount).padStart(6)}  ${n.url}`);
+  }
+
   const raw = await gatherUrls({ applyExclude: false });
 
   const byHost = new Map<string, string[]>();
