@@ -162,7 +162,7 @@ export default function Chat() {
   }, [input, busy, messages]);
 
   return (
-    <div className="chat">
+    <div className="chat" aria-busy={busy}>
       {messages.length > 1 && (
         <div className="chat-toolbar">
           <button type="button" className="chat-reset" onClick={newConversation} disabled={busy}>
@@ -170,7 +170,14 @@ export default function Chat() {
           </button>
         </div>
       )}
-      <div className="chat-messages" ref={listRef}>
+      <div
+        className="chat-messages"
+        ref={listRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-label="Razgovor s informatorom"
+      >
         {messages.map((m, i) => (
           <div key={i} className={`msg msg-${m.role}`}>
             <div className="msg-bubble">
