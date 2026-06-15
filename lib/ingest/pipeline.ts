@@ -9,8 +9,8 @@ import { config } from '../config';
 import { chunkText } from '../chunking';
 import { embedTexts, l2norm } from '../embeddings';
 import { supabaseAdmin } from '../supabase';
-import { fetchResource, gatherUrls, sleep } from './crawler';
-import { extractFromHtml, extractFromPdf } from './extract';
+import { fetchResource, gatherUrls, isAllowedHost, sleep } from './crawler';
+import { extractFromHtml, extractFromPdf, extractPdfLinks } from './extract';
 
 // Prozor svježine: dokument provjeren unutar zadnjih FRESH_DAYS dana preskačemo.
 // Postavljen ispod tjednog ciklusa (7 dana) kako bismo izbjegli rad samo s
@@ -74,28 +74,37 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   stats.totalUrls = urls.length;
   console.log(`[ingest] Za obradu (najstarije provjereni prvi): ${urls.length} URL-ova.`);
 
-  for (const url of urls) {
-    if (Date.now() > deadline) {
-      console.warn('[ingest] Dosegnut vremenski limit izvršavanja — prekid (nastavlja se idući put).');
-      break;
-    }
+  // PDF-ovi otkriveni praćenjem poveznica na HTML stranicama (nisu u sitemapu).
+  const discoveredPdfs = new Set<string>();
+  const processedUrls = new Set<string>();
+
+  async function processUrl(url: string): Promise<void> {
+    if (processedUrls.has(url)) return;
+    processedUrls.add(url);
 
     const prev = existingMap.get(url);
     if (prev && prev.fetchedAt && Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS) {
       stats.skippedFresh++;
-      continue;
+      return;
     }
 
     try {
       const resource = await fetchResource(url);
-      if (!resource) continue;
+      if (!resource) return;
+
+      // Otkrivanje PDF poveznica na stranici (proračuni, odluke, zapisnici…)
+      if (resource.contentType === 'html' && resource.html) {
+        for (const link of extractPdfLinks(resource.html, url)) {
+          if (isAllowedHost(link)) discoveredPdfs.add(link);
+        }
+      }
 
       const extracted =
         resource.contentType === 'pdf'
           ? await extractFromPdf(resource.buffer!, url)
           : extractFromHtml(resource.html!, url);
 
-      if (extracted.text.length < 80) continue;
+      if (extracted.text.length < 80) return;
 
       const hash = createHash('sha256').update(extracted.text).digest('hex');
       const previousHash = prev?.hash;
@@ -104,11 +113,11 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
         await sb.rpc('touch_document', { p_url: url });
         stats.unchanged++;
         stats.processed++;
-        continue;
+        return;
       }
 
       const chunks = chunkText(extracted.text);
-      if (chunks.length === 0) continue;
+      if (chunks.length === 0) return;
       const vectors = await embedTexts(chunks.map((c) => c.text));
 
       const { error } = await sb.rpc('upsert_document_with_chunks', {
@@ -142,6 +151,27 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       console.error(`[ingest] GREŠKA: ${url}`, e);
     }
     await sleep(config.crawlDelayMs);
+  }
+
+  for (const url of urls) {
+    if (Date.now() > deadline) {
+      console.warn('[ingest] Dosegnut vremenski limit izvršavanja — prekid (nastavlja se idući put).');
+      break;
+    }
+    await processUrl(url);
+  }
+
+  // Drugi prolaz: PDF-ovi otkriveni na stranicama (proračuni, odluke…)
+  const pdfList = [...discoveredPdfs].filter((u) => !processedUrls.has(u));
+  if (pdfList.length > 0) {
+    console.log(`[ingest] Otkriveno ${pdfList.length} PDF poveznica na stranicama — obrađujem.`);
+  }
+  for (const url of pdfList) {
+    if (Date.now() > deadline) {
+      console.warn('[ingest] Vremenski limit — preostali PDF-ovi idući put.');
+      break;
+    }
+    await processUrl(url);
   }
 
   stats.durationMs = Date.now() - startedAt;
