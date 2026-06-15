@@ -119,7 +119,7 @@ export const config = {
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),
   crawlDelayMs: int('CRAWL_DELAY_MS', 1000),
-  ingestMaxUrls: int('INGEST_MAX_URLS', 1500),
+  ingestMaxUrls: int('INGEST_MAX_URLS', 2100),
 
   lang: process.env.LANG_HR || process.env.LANG || 'hr',
 };

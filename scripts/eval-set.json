@@ -1,14 +1,50 @@
 [
   {
     "question": "Koje je radno vrijeme gradske uprave Grada Valpova?",
-    "expected_urls": ["https://valpovo.hr/kontakt/"]
+    "expected_urls": ["valpovo.hr/kontakt"]
   },
   {
     "question": "Kako mogu podnijeti zahtjev za pristup informacijama?",
-    "expected_urls": ["https://valpovo.hr/pristup-informacijama/"]
+    "expected_urls": ["valpovo.hr/pristup-informacijama"]
   },
   {
     "question": "Kada se odvozi glomazni otpad u Ladimirevcima?",
-    "expected_urls": ["https://valpovo.hr/komunalno-gospodarstvo/"]
+    "expected_urls": ["valpovo.hr/komunal"]
+  },
+  {
+    "question": "Koji su aktualni natječaji i javni pozivi Grada Valpova?",
+    "expected_urls": ["valpovo.hr/natjecaj", "valpovo.hr/javni-poziv"]
+  },
+  {
+    "question": "Gdje mogu pogledati proračun Grada Valpova?",
+    "expected_urls": ["valpovo.hr/proracun"]
+  },
+  {
+    "question": "Kako se prijaviti za upis djeteta u dječji vrtić?",
+    "expected_urls": ["mojbambi.hr/upisi", "mojbambi.hr"]
+  },
+  {
+    "question": "Koje srednjoškolske programe nudi srednja škola u Valpovu?",
+    "expected_urls": ["ss-valpovo.hr"]
+  },
+  {
+    "question": "Gdje se nalazi kontakt osnovne škole Matije Petra Katančića?",
+    "expected_urls": ["oskatancic.hr/kontakt", "oskatancic.hr"]
+  },
+  {
+    "question": "Koje su turističke znamenitosti u Valpovu?",
+    "expected_urls": ["tz.valpovo.hr"]
+  },
+  {
+    "question": "Tko obavlja poslove prostornog uređenja i urbanizma u Valpovu?",
+    "expected_urls": ["urbanizam-valpovo.hr"]
+  },
+  {
+    "question": "Kako kontaktirati vatrogasce u Valpovu?",
+    "expected_urls": ["dvd-valpovo.hr/kontakt", "dvd-valpovo.hr"]
+  },
+  {
+    "question": "Koje kulturne događaje organizira ustanova za kulturu u Valpovu?",
+    "expected_urls": ["ustanova.valpovo.hr"]
   }
 ]
