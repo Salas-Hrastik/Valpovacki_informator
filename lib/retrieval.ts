@@ -46,8 +46,11 @@ export async function retrieve(
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
   let results: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
-  // 2) Leksički rezervni kanal — kada vektorski rezultati nisu dovoljni
-  if (config.ragFtsFallback && results.length < Math.ceil(topK / 2)) {
+  // 2) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Ključno za
+  // činjenična pitanja i popise (imena vijećnika, brojevi, kontakti) koje vektorsko
+  // pretraživanje slabo rangira jer se popis imena semantički ne poklapa s upitom.
+  // FTS pogoci dobivaju konzervativan rezultat pa vektorski i dalje imaju prednost.
+  if (config.ragFtsFallback) {
     const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
       query_text: query,
       match_count: topK,
@@ -82,7 +85,7 @@ export async function retrieve(
   let budget = config.ragContextCharBudget;
   for (const r of results) {
     const n = perUrl.get(r.url) ?? 0;
-    if (n >= 2) continue;
+    if (n >= 3) continue; // do 3 isječka po dokumentu (popisi imena znaju biti duži)
     if (r.text.length > budget) continue;
     perUrl.set(r.url, n + 1);
     budget -= r.text.length;
