@@ -86,12 +86,22 @@ body {
   border-top: 1px solid var(--boja-rub);
 }
 
-.chat-input input {
+.chat-input textarea {
   flex: 1;
   padding: 10px 12px;
   border: 1px solid var(--boja-rub);
   border-radius: 8px;
   font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  overflow-y: auto;
+  max-height: 120px;
+}
+.chat-input textarea:focus {
+  outline: none;
+  border-color: var(--boja-primarna);
+  box-shadow: 0 0 0 2px rgba(31, 78, 121, 0.15);
 }
 
 .chat-input button {
@@ -102,8 +112,31 @@ body {
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
+  align-self: flex-end;
 }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
+
+/* Animirani indikator "asistent piše" (tri točke) */
+.typing { display: inline-flex; align-items: center; gap: 4px; padding: 4px 0; }
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  opacity: 0.4;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing span { animation: none; opacity: 0.6; }
+}
 
 .chat-disclaimer {
   margin: 0;
