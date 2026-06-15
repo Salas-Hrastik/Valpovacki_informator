@@ -77,7 +77,7 @@ Dopuštene roditeljske domene (CSP `frame-ancestors`) podešavaju se u
 | Dodavanje novog izvora | Dopuniti `ALLOWED_HOSTS` i `SITEMAP_URLS`/`SEED_URLS` u Vercel ENV → redeploy → ingestija |
 | Promjena modela | `CLAUDE_MODEL` u Vercel ENV (bez izmjene koda) |
 | Promjena embeddinga | `EMBEDDING_*` ENV **+ uskladiti `vector(DIM)` u shemi + ponovna ingestija** |
-| Nadzor kvalitete | Tablica `conversation_logs` (pitanja, izvori, trajanje, ocjene); `npm run eval` za offline metrike (hit@k, preciznost citata) |
+| Nadzor kvalitete | Tablica `conversation_logs` (pitanja, izvori, trajanje, ocjene); `npm run eval` za offline metrike (hit@k, preciznost citata). Skup je u `scripts/eval-set.json`; referentni URL-ovi mogu biti i dijelovi putanje (toleranto podudaranje) — izoštrite ih stvarnim URL-ovima nakon prve ingestije |
 | CI | `.github/workflows/ci.yml` — type-check, lint, build (u monorepu kopirati u korijen) |
 
 ## API (sažetak)

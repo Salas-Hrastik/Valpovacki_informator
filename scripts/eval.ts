@@ -28,6 +28,18 @@ interface EvalCase {
   expected_urls: string[];
 }
 
+/**
+ * Tolerantno podudaranje: referentni unos u eval-setu može biti puni URL ILI samo
+ * dio putanje (npr. "valpovo.hr/komunal"). Smatra se pogotkom ako citirani URL
+ * sadrži referentni niz ili obrnuto. Tako mali pomaci u stvarnim putanjama ne
+ * proizvode lažne promašaje; referentne nizove izoštrite nakon prve ingestije.
+ */
+function urlMatches(citedUrl: string, expected: string): boolean {
+  const a = citedUrl.toLowerCase().replace(/\/+$/, '');
+  const b = expected.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  return a.includes(b) || b.includes(a.replace(/^https?:\/\//, ''));
+}
+
 async function main(): Promise<void> {
   const { retrieve, uniqueSources } = await import('../lib/retrieval');
 
@@ -43,10 +55,10 @@ async function main(): Promise<void> {
     const sources = uniqueSources(chunks);
     const urls = sources.map((s) => s.url);
 
-    const hit = c.expected_urls.some((u) => urls.includes(u));
+    const hit = c.expected_urls.some((e) => urls.some((u) => urlMatches(u, e)));
     if (hit) hits++;
     citedTotal += urls.length;
-    citedRelevant += urls.filter((u) => c.expected_urls.includes(u)).length;
+    citedRelevant += urls.filter((u) => c.expected_urls.some((e) => urlMatches(u, e))).length;
 
     console.log(`${hit ? '✔' : '✘'} ${c.question}`);
     if (!hit) console.log(`   očekivano: ${c.expected_urls.join(', ')}\n   dobiveno:  ${urls.join(', ') || '(ništa)'}`);
