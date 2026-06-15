@@ -29,15 +29,38 @@ export function isAllowedHost(url: string, hosts: string[] = config.allowedHosts
 export function isExcludedUrl(url: string, patterns: string[] = config.excludeUrlPatterns): boolean {
   const lower = url.toLowerCase();
   if (lower.endsWith('.pdf')) return false;
+  return patterns.some((p) => {
+    if (!p) return false;
+    if (p.startsWith('re:')) {
+      try {
+        return new RegExp(p.slice(3), 'i').test(url);
+      } catch {
+        return false; // neispravan regex se ignorira
+      }
+    }
+    return lower.includes(p.toLowerCase());
+  });
+}
+
+/** Treba li preskočiti cijeli (pod-)sitemap prema config.excludeSitemapPatterns? */
+export function isExcludedSitemap(
+  url: string,
+  patterns: string[] = config.excludeSitemapPatterns,
+): boolean {
+  const lower = url.toLowerCase();
   return patterns.some((p) => p && lower.includes(p.toLowerCase()));
 }
 
 /** Dohvaća sve URL-ove iz konfiguriranih sitemapova (uklj. sitemap-indekse). */
-export async function gatherUrls(): Promise<string[]> {
+export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise<string[]> {
+  // applyExclude=false vraća SIROVE URL-ove (bez filtra) — koristi se za analizu
+  // korpusa (npm run ingest -- --analyze). U normalnoj ingestiji filtar je uključen.
+  const applyExclude = opts.applyExclude !== false;
+  const keep = (u: string) => !applyExclude || !isExcludedUrl(u);
   const urls = new Set<string>();
 
   for (const seed of config.seedUrls) {
-    if (isAllowedHost(seed) && !isExcludedUrl(seed)) urls.add(normalizeUrl(seed));
+    if (isAllowedHost(seed) && keep(seed)) urls.add(normalizeUrl(seed));
   }
 
   const queue = [...config.sitemapUrls];
@@ -61,8 +84,11 @@ export async function gatherUrls(): Promise<string[]> {
       const isIndex = /<sitemapindex/i.test(xml);
       for (const loc of locs) {
         if (!isAllowedHost(loc)) continue;
-        if (isIndex || loc.endsWith('.xml')) queue.push(loc);
-        else if (!isExcludedUrl(loc)) urls.add(normalizeUrl(loc));
+        if (isIndex || loc.endsWith('.xml')) {
+          if (!applyExclude || !isExcludedSitemap(loc)) queue.push(loc);
+        } else if (keep(loc)) {
+          urls.add(normalizeUrl(loc));
+        }
       }
     } catch (e) {
       console.warn(`[ingest] Sitemap nedostupan: ${sitemapUrl}`, e);
@@ -70,6 +96,51 @@ export async function gatherUrls(): Promise<string[]> {
   }
 
   return [...urls];
+}
+
+export interface SitemapNode {
+  url: string;
+  pageCount: number; // broj izravnih (ne-.xml) <loc> stranica u ovom sitemapu
+  excluded: boolean; // bi li ga trenutačni EXCLUDE_SITEMAP_PATTERNS preskočili?
+}
+
+/**
+ * Diagnostika: obiđi SVE (pod-)sitemapove bez filtriranja i vrati za svaki broj
+ * izravnih stranica te bi li ga trenutačni uzorci preskočili. Služi za precizno
+ * podešavanje EXCLUDE_SITEMAP_PATTERNS (vidi se točno ime i veličina svakog sitemapa).
+ */
+export async function mapSitemapTree(): Promise<SitemapNode[]> {
+  const nodes: SitemapNode[] = [];
+  const queue = [...config.sitemapUrls];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const sitemapUrl = queue.shift()!;
+    if (visited.has(sitemapUrl) || !isAllowedHost(sitemapUrl)) continue;
+    visited.add(sitemapUrl);
+
+    try {
+      const res = await fetch(sitemapUrl, {
+        headers: { 'User-Agent': CRAWLER_USER_AGENT },
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]);
+      const isIndex = /<sitemapindex/i.test(xml);
+
+      let pageCount = 0;
+      for (const loc of locs) {
+        if (!isAllowedHost(loc)) continue;
+        if (isIndex || loc.endsWith('.xml')) queue.push(loc);
+        else pageCount++;
+      }
+      if (!isIndex) nodes.push({ url: sitemapUrl, pageCount, excluded: isExcludedSitemap(sitemapUrl) });
+    } catch (e) {
+      console.warn(`[ingest] Sitemap nedostupan: ${sitemapUrl}`, e);
+    }
+  }
+  return nodes;
 }
 
 /** Dohvaća jedan resurs (HTML ili PDF) uz robots.txt provjeru i timeout. */
