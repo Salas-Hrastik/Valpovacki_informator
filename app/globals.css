@@ -55,6 +55,53 @@ body {
 .msg-user { justify-content: flex-end; }
 .msg-assistant { justify-content: flex-start; }
 
+/* Alatna traka iznad razgovora (Novi razgovor) */
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--boja-rub);
+  background: #fafbfc;
+}
+.chat-reset {
+  background: transparent;
+  border: 1px solid var(--boja-rub);
+  color: var(--boja-primarna);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.chat-reset:hover:not(:disabled) { background: #eef1f5; }
+.chat-reset:disabled { opacity: 0.5; cursor: default; }
+
+/* Brzi prijedlozi pitanja (chips) */
+.chat-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip {
+  background: var(--boja-bijela);
+  border: 1px solid var(--boja-primarna);
+  color: var(--boja-primarna);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.chip:hover { background: var(--boja-primarna); color: #fff; }
+
+/* Gumb "Kopiraj odgovor" unutar odgovora asistenta */
+.msg-copy {
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: #56708a;
+  font-size: 0.78rem;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.msg-copy:hover { color: var(--boja-primarna); text-decoration: underline; }
+
 .msg-bubble {
   max-width: 85%;
   padding: 10px 14px;

@@ -25,6 +25,16 @@ const UVODNA_PORUKA =
   'Slobodno me pitajte o uslugama gradske uprave, natječajima, komunalnim temama, ' +
   'ustanovama i događanjima u Gradu Valpovu i pripadajućim naseljima.';
 
+// Brzi prijedlozi pitanja — prikazuju se na početku da građanin odmah vidi
+// što može pitati. Klik šalje pitanje izravno.
+const PRIJEDLOZI = [
+  'Koje je radno vrijeme gradske uprave?',
+  'Koji su aktualni natječaji i javni pozivi?',
+  'Kako platiti komunalnu naknadu?',
+  'Kako se prijaviti za dječji vrtić?',
+  'Kako predati zahtjev za pristup informacijama?',
+];
+
 function formatDateHr(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
@@ -37,6 +47,7 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,11 +63,33 @@ export default function Chat() {
     if (taRef.current) taRef.current.style.height = 'auto';
   };
 
-  const send = useCallback(async () => {
-    const question = input.trim();
-    if (!question || busy) return;
+  // Reset razgovora na uvodnu poruku.
+  const newConversation = () => {
+    if (busy) return;
+    setMessages([{ role: 'assistant', content: UVODNA_PORUKA }]);
     setInput('');
     resetInputHeight();
+    setCopiedIdx(null);
+  };
+
+  // Kopiranje odgovora u međuspremnik uz kratku potvrdu.
+  const copyAnswer = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx((c) => (c === idx ? null : c)), 1500);
+    } catch {
+      /* clipboard nedostupan (npr. nesiguran kontekst) — tiho ignoriraj */
+    }
+  };
+
+  const send = useCallback(async (preset?: string) => {
+    const question = (preset ?? input).trim();
+    if (!question || busy) return;
+    if (preset === undefined) {
+      setInput('');
+      resetInputHeight();
+    }
     setBusy(true);
 
     const history = messages.filter((m, i) => !(i === 0 && m.role === 'assistant'));
@@ -130,6 +163,13 @@ export default function Chat() {
 
   return (
     <div className="chat">
+      {messages.length > 1 && (
+        <div className="chat-toolbar">
+          <button type="button" className="chat-reset" onClick={newConversation} disabled={busy}>
+            ↺ Novi razgovor
+          </button>
+        </div>
+      )}
       <div className="chat-messages" ref={listRef}>
         {messages.map((m, i) => (
           <div key={i} className={`msg msg-${m.role}`}>
@@ -171,9 +211,29 @@ export default function Chat() {
                   </ul>
                 </div>
               )}
+              {m.role === 'assistant' && i > 0 && m.content && !(busy && i === messages.length - 1) && (
+                <button
+                  type="button"
+                  className="msg-copy"
+                  onClick={() => void copyAnswer(m.content, i)}
+                  aria-label="Kopiraj odgovor"
+                >
+                  {copiedIdx === i ? '✓ Kopirano' : '⧉ Kopiraj'}
+                </button>
+              )}
             </div>
           </div>
         ))}
+
+        {messages.length === 1 && !busy && (
+          <div className="chat-suggestions" aria-label="Prijedlozi pitanja">
+            {PRIJEDLOZI.map((q) => (
+              <button key={q} type="button" className="chip" onClick={() => void send(q)}>
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <form
