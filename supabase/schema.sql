@@ -142,7 +142,12 @@ language sql stable as $$
   limit match_count;
 $$;
 
--- Leksičko (FTS) pretraživanje — rezervni kanal --------------------------------
+-- Leksičko (FTS) pretraživanje — hibridni kanal --------------------------------
+-- Umjesto plainto_tsquery (koji traži SVE riječi pitanja i ne podnosi hrvatsku
+-- sklonidbu), gradimo tsquery iz značajnih riječi upita kao "ILI" prefikse:
+--   'vijec:* | grads:* | saziv:* | ...'
+-- Tako se dohvaća chunk koji sadrži BILO KOJU ključnu riječ, a prefiks (skraćeno
+-- na 5 znakova) tolerira sklonidbu: "vijec:*" hvata "vijeće", "vijeća", "vijećnici".
 create or replace function search_chunks_fts(
   query_text  text,
   match_count int default 8
@@ -156,16 +161,26 @@ returns table (
   score      float
 )
 language sql stable as $$
+  with q as (
+    select string_agg(distinct w || ':*', ' | ') as tsq
+    from (
+      select left(regexp_replace(t, '[^a-z0-9]', '', 'g'), 5) as w
+      from unnest(regexp_split_to_array(fts_norm(query_text), '\s+')) as t
+    ) s
+    where length(w) >= 3
+  )
   select
     d.id        as chunk_id,
     d.text,
     dok.title,
     dok.url,
     dok.fetched_at,
-    ts_rank(d.fts, plainto_tsquery('simple', fts_norm(query_text)))::float as score
+    ts_rank(d.fts, to_tsquery('simple', q.tsq))::float as score
   from dijelovi d
   join dokumenti dok on dok.id = d.document_id
-  where d.fts @@ plainto_tsquery('simple', fts_norm(query_text))
+  cross join q
+  where coalesce(q.tsq, '') <> ''
+    and d.fts @@ to_tsquery('simple', q.tsq)
   order by score desc
   limit match_count;
 $$;
