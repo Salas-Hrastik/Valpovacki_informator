@@ -112,18 +112,31 @@ async function analyze(): Promise<void> {
  * (npr. sitemap privremeno nedostupan), da ne dođe do masovnog brisanja.
  */
 async function prune(apply: boolean): Promise<void> {
-  const { gatherUrls } = await import('../lib/ingest/crawler');
+  const { gatherUrlsDetailed } = await import('../lib/ingest/crawler');
   const { supabaseAdmin } = await import('../lib/supabase');
   const sb = supabaseAdmin();
 
-  const corpus = new Set(await gatherUrls()); // filtrirani, željeni skup
+  const { urls, failedSitemaps } = await gatherUrlsDetailed(); // filtrirani, željeni skup
+  const corpus = new Set(urls);
   console.log(`[prune] Filtrirani korpus: ${corpus.size} URL-ova.`);
 
-  const MIN_CORPUS = 500;
+  // Sigurnosna brana 1: ako ijedan sitemap nije dohvaćen, korpus je NEPOTPUN —
+  // brisanje bi uklonilo legitimne stranice. Odbij i pusti korisnika da ponovi.
+  if (failedSitemaps.length > 0) {
+    console.error(
+      `[prune] PREKID: ${failedSitemaps.length} sitemap(ova) nije dohvaćeno, korpus je nepotpun. ` +
+        'Ne brišem ništa. Pokušaj ponovno (provjeri internet/dostupnost izvora):',
+    );
+    for (const f of failedSitemaps) console.error(`   ✗ ${f}`);
+    process.exit(1);
+  }
+
+  // Sigurnosna brana 2: apsolutni minimum (očekivani korpus je ~2000).
+  const MIN_CORPUS = 1500;
   if (corpus.size < MIN_CORPUS) {
     console.error(
       `[prune] PREKID: korpus (${corpus.size}) manji je od sigurnosnog praga (${MIN_CORPUS}). ` +
-        'Vjerojatno je neki sitemap privremeno nedostupan — ne brišem ništa.',
+        'Vjerojatno nepotpuno prikupljanje — ne brišem ništa.',
     );
     process.exit(1);
   }

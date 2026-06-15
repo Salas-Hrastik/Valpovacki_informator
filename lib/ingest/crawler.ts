@@ -51,13 +51,22 @@ export function isExcludedSitemap(
   return patterns.some((p) => p && lower.includes(p.toLowerCase()));
 }
 
-/** Dohvaća sve URL-ove iz konfiguriranih sitemapova (uklj. sitemap-indekse). */
-export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise<string[]> {
+export interface GatherResult {
+  urls: string[];
+  /** (Pod-)sitemapovi koji se NISU uspjeli dohvatiti (timeout/HTTP greška). Ako ih
+   *  ima, prikupljeni korpus je NEPOTPUN — destruktivne radnje (prune) ga ne smiju
+   *  koristiti jer bi izgubili legitimne stranice. */
+  failedSitemaps: string[];
+}
+
+/** Dohvaća sve URL-ove iz sitemapova uz popis onih koji su zakazali. */
+export async function gatherUrlsDetailed(opts: { applyExclude?: boolean } = {}): Promise<GatherResult> {
   // applyExclude=false vraća SIROVE URL-ove (bez filtra) — koristi se za analizu
   // korpusa (npm run ingest -- --analyze). U normalnoj ingestiji filtar je uključen.
   const applyExclude = opts.applyExclude !== false;
   const keep = (u: string) => !applyExclude || !isExcludedUrl(u);
   const urls = new Set<string>();
+  const failedSitemaps: string[] = [];
 
   for (const seed of config.seedUrls) {
     if (isAllowedHost(seed) && keep(seed)) urls.add(normalizeUrl(seed));
@@ -76,7 +85,10 @@ export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise
         headers: { 'User-Agent': CRAWLER_USER_AGENT },
         signal: AbortSignal.timeout(20_000),
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        failedSitemaps.push(`${sitemapUrl} (HTTP ${res.status})`);
+        continue;
+      }
       const xml = await res.text();
 
       // Jednostavna ekstrakcija <loc> elemenata (bez dodatne XML ovisnosti)
@@ -91,11 +103,17 @@ export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise
         }
       }
     } catch (e) {
+      failedSitemaps.push(sitemapUrl);
       console.warn(`[ingest] Sitemap nedostupan: ${sitemapUrl}`, e);
     }
   }
 
-  return [...urls];
+  return { urls: [...urls], failedSitemaps };
+}
+
+/** Dohvaća sve URL-ove iz konfiguriranih sitemapova (uklj. sitemap-indekse). */
+export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise<string[]> {
+  return (await gatherUrlsDetailed(opts)).urls;
 }
 
 export interface SitemapNode {
