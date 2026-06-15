@@ -33,11 +33,15 @@ export function isExcludedUrl(url: string, patterns: string[] = config.excludeUr
 }
 
 /** Dohvaća sve URL-ove iz konfiguriranih sitemapova (uklj. sitemap-indekse). */
-export async function gatherUrls(): Promise<string[]> {
+export async function gatherUrls(opts: { applyExclude?: boolean } = {}): Promise<string[]> {
+  // applyExclude=false vraća SIROVE URL-ove (bez filtra) — koristi se za analizu
+  // korpusa (npm run ingest -- --analyze). U normalnoj ingestiji filtar je uključen.
+  const applyExclude = opts.applyExclude !== false;
+  const keep = (u: string) => !applyExclude || !isExcludedUrl(u);
   const urls = new Set<string>();
 
   for (const seed of config.seedUrls) {
-    if (isAllowedHost(seed) && !isExcludedUrl(seed)) urls.add(normalizeUrl(seed));
+    if (isAllowedHost(seed) && keep(seed)) urls.add(normalizeUrl(seed));
   }
 
   const queue = [...config.sitemapUrls];
@@ -62,7 +66,7 @@ export async function gatherUrls(): Promise<string[]> {
       for (const loc of locs) {
         if (!isAllowedHost(loc)) continue;
         if (isIndex || loc.endsWith('.xml')) queue.push(loc);
-        else if (!isExcludedUrl(loc)) urls.add(normalizeUrl(loc));
+        else if (keep(loc)) urls.add(normalizeUrl(loc));
       }
     } catch (e) {
       console.warn(`[ingest] Sitemap nedostupan: ${sitemapUrl}`, e);
