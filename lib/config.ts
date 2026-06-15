@@ -87,11 +87,15 @@ const EXCLUDE_URL_PATTERNS_DEFAULT = [
 // "post" sitemap škole čije objave nemaju datum u URL-u. Nadjačivo ENV-om
 // EXCLUDE_SITEMAP_PATTERNS (zarezom odvojeno).
 const EXCLUDE_SITEMAP_PATTERNS_DEFAULT = [
-  'rl_gallery', 'gallery-sitemap', 'category-sitemap', 'author-sitemap',
-  'post_tag-sitemap', 'tag-sitemap', 'product-sitemap',
-  // Škola ss-valpovo.hr: ~3000 objava bez datuma (nefiltrabilno po URL-u) — izbacujemo
-  // njihov post-sitemap, a stalne stranice (page-sitemap) zadržavamo.
-  'ss-valpovo.hr/post-sitemap',
+  'rl_gallery', 'gallery-sitemap', 'product-sitemap',
+  // Taksonomije i autori (kategorije/tagovi/korisnici) — njihovi su URL-ovi ionako
+  // izbačeni URL-filtrom; preskačemo i same sitemape radi brzine i čistoće.
+  'wp-sitemap-taxonomies', 'wp-sitemap-users',
+  'category-sitemap', 'author-sitemap', 'post_tag-sitemap', 'tag-sitemap',
+  // Škola ss-valpovo.hr: ~2600 objava bez datuma (nefiltrabilno po URL-u) — izbacujemo
+  // njihov post-sitemap (wp-sitemap-posts-post-N.xml), a stalne stranice
+  // (wp-sitemap-posts-page) zadržavamo. Pažnja: "posts-post" se NE poklapa s "posts-page".
+  'ss-valpovo.hr/wp-sitemap-posts-post',
 ];
 
 export const config = {
