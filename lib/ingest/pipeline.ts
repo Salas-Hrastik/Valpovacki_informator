@@ -12,7 +12,10 @@ import { supabaseAdmin } from '../supabase';
 import { fetchResource, gatherUrls, sleep } from './crawler';
 import { extractFromHtml, extractFromPdf } from './extract';
 
-const FRESH_DAYS = 6;
+// Prozor svježine: dokument provjeren unutar zadnjih FRESH_DAYS dana preskačemo.
+// Postavljen ispod tjednog ciklusa (7 dana) kako bismo izbjegli rad samo s
+// dvostrukim provjeravanjem, a istovremeno ostavili marginu za pomak rasporeda.
+const FRESH_DAYS = 5;
 const FRESH_MS = FRESH_DAYS * 24 * 60 * 60 * 1000;
 const PAGE = 1000;
 
@@ -39,9 +42,8 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
     unchanged: 0, skippedFresh: 0, failed: 0, failedUrls: [], durationMs: 0,
   };
 
-  const urls = (await gatherUrls()).slice(0, maxUrls);
-  stats.totalUrls = urls.length;
-  console.log(`[ingest] Pronađeno ${urls.length} URL-ova za obradu.`);
+  const allUrls = await gatherUrls();
+  console.log(`[ingest] Pronađeno ${allUrls.length} URL-ova iz sitemapova/seedova.`);
 
   // Učitaj SVE postojeće dokumente u stranicama po 1000 (obilazi Supabase limit)
   const existingMap = new Map<string, { hash: string; fetchedAt: string }>();
@@ -58,6 +60,19 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
     if (data.length < PAGE) break;
   }
   console.log(`[ingest] Učitano ${existingMap.size} postojećih dokumenata.`);
+
+  // Rotacijska obrada: "najstarije provjereni prvi". Sortiramo po fetched_at
+  // uzlazno; URL-ovi koji još nisu u bazi nemaju fetched_at pa dobivaju vrijeme 0
+  // i obrađuju se prije svih. Tek tada režemo na maxUrls — tako kroz uzastopne
+  // tjedne runde rotacijski obiđemo cijeli korpus bez "zaglavljivanja" na repu.
+  const fetchedAtMs = (url: string): number => {
+    const t = existingMap.get(url)?.fetchedAt;
+    const ms = t ? new Date(t).getTime() : NaN;
+    return Number.isFinite(ms) ? ms : 0;
+  };
+  const urls = allUrls.sort((a, b) => fetchedAtMs(a) - fetchedAtMs(b)).slice(0, maxUrls);
+  stats.totalUrls = urls.length;
+  console.log(`[ingest] Za obradu (najstarije provjereni prvi): ${urls.length} URL-ova.`);
 
   for (const url of urls) {
     if (Date.now() > deadline) {

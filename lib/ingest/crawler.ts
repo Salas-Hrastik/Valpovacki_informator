@@ -21,12 +21,23 @@ export function isAllowedHost(url: string, hosts: string[] = config.allowedHosts
   }
 }
 
+/**
+ * Je li URL bezvrijedan za indeksiranje? Preskačemo WordPress arhive/feedove i
+ * medijske datoteke (osim PDF-a) prema config.excludeUrlPatterns. PDF se uvijek
+ * propušta jer iz njega izvlačimo tekst.
+ */
+export function isExcludedUrl(url: string, patterns: string[] = config.excludeUrlPatterns): boolean {
+  const lower = url.toLowerCase();
+  if (lower.endsWith('.pdf')) return false;
+  return patterns.some((p) => p && lower.includes(p.toLowerCase()));
+}
+
 /** Dohvaća sve URL-ove iz konfiguriranih sitemapova (uklj. sitemap-indekse). */
 export async function gatherUrls(): Promise<string[]> {
   const urls = new Set<string>();
 
   for (const seed of config.seedUrls) {
-    if (isAllowedHost(seed)) urls.add(normalizeUrl(seed));
+    if (isAllowedHost(seed) && !isExcludedUrl(seed)) urls.add(normalizeUrl(seed));
   }
 
   const queue = [...config.sitemapUrls];
@@ -51,7 +62,7 @@ export async function gatherUrls(): Promise<string[]> {
       for (const loc of locs) {
         if (!isAllowedHost(loc)) continue;
         if (isIndex || loc.endsWith('.xml')) queue.push(loc);
-        else urls.add(normalizeUrl(loc));
+        else if (!isExcludedUrl(loc)) urls.add(normalizeUrl(loc));
       }
     } catch (e) {
       console.warn(`[ingest] Sitemap nedostupan: ${sitemapUrl}`, e);

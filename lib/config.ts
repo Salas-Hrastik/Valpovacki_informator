@@ -20,7 +20,6 @@ function list(name: string, fallback: string[] = []): string[] {
 // Dopuštene domene izvora (gradska uprava + povezane ustanove i tvrtke)
 const ALLOWED_HOSTS_DEFAULT = [
   'valpovo.hr', 'www.valpovo.hr',
-  'dvorac.hr', 'www.dvorac.hr',
   'urbanizam-valpovo.hr', 'www.urbanizam-valpovo.hr',
   'tz.valpovo.hr', 'ustanova.valpovo.hr',
   'vpc.hr', 'www.vpc.hr',
@@ -35,7 +34,6 @@ const ALLOWED_HOSTS_DEFAULT = [
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
 const SITEMAP_URLS_DEFAULT = [
-  'https://dvorac.hr/sitemap.xml',
   'https://urbanizam-valpovo.hr/sitemap.xml',
   'https://tz.valpovo.hr/sitemap.xml',
   'https://ustanova.valpovo.hr/sitemap.xml',
@@ -51,7 +49,6 @@ const SITEMAP_URLS_DEFAULT = [
 
 // Pojedinačne stranice (jamče sadržaj i za sjedišta bez sitemapa)
 const SEED_URLS_DEFAULT = [
-  'https://www.dvorac.hr/',
   'https://urbanizam-valpovo.hr/',
   'https://tz.valpovo.hr/',
   'https://ustanova.valpovo.hr/',
@@ -64,6 +61,18 @@ const SEED_URLS_DEFAULT = [
   'https://www.zsuval.com/',
   'https://www.dzobz.hr/obiteljska_grad_valpovo/',
   'https://valpovo.hr/',
+];
+
+// Uzorci za preskakanje bezvrijednih URL-ova (uglavnom WordPress arhive/feedovi
+// i medijske datoteke). Provjeravaju se kao podniz unutar punog URL-a, neosjetljivo
+// na velika/mala slova. Nadjačivo ENV-om EXCLUDE_URL_PATTERNS (zarezom odvojeno).
+const EXCLUDE_URL_PATTERNS_DEFAULT = [
+  '/tag/', '/page/', '/author/', '/category/', '/feed', '/wp-json',
+  '?replytocom', '/attachment/', '/comment-page-', '/wp-content/uploads/',
+  // Ekstenzije slika/dokumenata (PDF se NE isključuje — obrađuje se zasebno)
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico',
+  '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.zip', '.rar', '.7z', '.gz', '.mp3', '.mp4', '.avi', '.mov', '.css', '.js',
 ];
 
 export const config = {
@@ -82,6 +91,7 @@ export const config = {
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
   seedUrls: list('SEED_URLS', SEED_URLS_DEFAULT),
+  excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),
   crawlDelayMs: int('CRAWL_DELAY_MS', 1000),
