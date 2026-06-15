@@ -38,14 +38,25 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollDown = () =>
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }));
+
+  // Polje za unos raste s tekstom (do razumne visine), pa se vraća na jedan red.
+  const autoGrow = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  };
+  const resetInputHeight = () => {
+    if (taRef.current) taRef.current.style.height = 'auto';
+  };
 
   const send = useCallback(async () => {
     const question = input.trim();
     if (!question || busy) return;
     setInput('');
+    resetInputHeight();
     setBusy(true);
 
     const history = messages.filter((m, i) => !(i === 0 && m.role === 'assistant'));
@@ -136,8 +147,14 @@ export default function Chat() {
                     {m.content}
                   </ReactMarkdown>
                 </div>
+              ) : busy && i === messages.length - 1 ? (
+                <span className="typing" aria-label="Asistent piše odgovor" role="status">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
               ) : (
-                busy && i === messages.length - 1 ? '…' : ''
+                ''
               )}
               {m.sources && m.sources.length > 0 && (
                 <div className="msg-sources">
@@ -166,10 +183,21 @@ export default function Chat() {
           void send();
         }}
       >
-        <input
-          type="text"
+        <textarea
+          ref={taRef}
+          rows={1}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autoGrow(e.currentTarget);
+          }}
+          onKeyDown={(e) => {
+            // Enter šalje; Shift+Enter umeće novi red.
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
           placeholder="Postavite pitanje o Gradu Valpovu…"
           maxLength={2000}
           disabled={busy}
