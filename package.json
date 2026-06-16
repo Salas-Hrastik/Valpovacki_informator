@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "ingest": "tsx scripts/ingest.ts",
     "ocr:check": "tsx scripts/ocr-check.ts",
+    "ocr:report": "tsx scripts/ocr-report.ts",
     "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {
