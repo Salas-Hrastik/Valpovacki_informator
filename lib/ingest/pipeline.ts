@@ -9,7 +9,7 @@ import { config } from '../config';
 import { chunkText } from '../chunking';
 import { embedTexts, l2norm } from '../embeddings';
 import { supabaseAdmin } from '../supabase';
-import { fetchResource, gatherUrls, isAllowedHost, sleep } from './crawler';
+import { fetchResource, gatherUrls, isAllowedHost, isOldArchiveUrl, sleep } from './crawler';
 import {
   extractFromHtml,
   extractFromImage,
@@ -115,11 +115,11 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       // zapisnici, plakati s datumima manifestacija…)
       if (resource.contentType === 'html' && resource.html) {
         for (const link of extractPdfLinks(resource.html, url)) {
-          if (isAllowedHost(link)) discoveredPdfs.add(link);
+          if (isAllowedHost(link) && !isOldArchiveUrl(link)) discoveredPdfs.add(link);
         }
         if (config.ocrImagesEnabled) {
           for (const link of extractImageLinks(resource.html, url)) {
-            if (isAllowedHost(link)) discoveredImages.add(link);
+            if (isAllowedHost(link) && !isOldArchiveUrl(link)) discoveredImages.add(link);
           }
         }
       }

@@ -43,7 +43,19 @@ export function isExcludedUrl(url: string, patterns: string[] = config.excludeUr
   });
 }
 
-/** Treba li preskočiti cijeli (pod-)sitemap prema config.excludeSitemapPatterns? */
+/**
+ * Je li URL stara arhiva (npr. plan nabave 2018, raspored odvoza 2015)? Gleda SVE
+ * 4-znamenkaste godine u URL-u i uzima NAJVEĆU; ako je manja od config.archiveMinYear,
+ * smatramo dokument arhivskim i preskačemo ga. URL-ovi BEZ godine se NE preskaču
+ * (ne želimo ispustiti aktualne dokumente bez datuma u putanji). Koristi se za
+ * OTKRIVENE PDF/slika poveznice (koje inače zaobilaze isExcludedUrl).
+ */
+export function isOldArchiveUrl(url: string, minYear: number = config.archiveMinYear): boolean {
+  const years = [...url.matchAll(/(?:19|20)\d{2}/g)].map((m) => parseInt(m[0], 10));
+  if (years.length === 0) return false; // nema godine — ne preskačemo
+  return Math.max(...years) < minYear;
+}
+
 export function isExcludedSitemap(
   url: string,
   patterns: string[] = config.excludeSitemapPatterns,
