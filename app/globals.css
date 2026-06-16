@@ -140,10 +140,62 @@ body {
 .msg-text thead th { background: var(--boja-pozadina-blago, #f3f4f6); font-weight: 600; }
 .msg-text tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.025); }
 
-.msg-sources { margin-top: 10px; font-size: 0.85rem; border-top: 1px solid var(--boja-rub); padding-top: 8px; }
-.msg-sources ul { margin: 4px 0 0; padding-left: 18px; }
-.msg-sources a { color: var(--boja-primarna); }
 .msg-source-date { color: #666; }
+
+/* Gumb "Izvori (N)" — otvara skočni prozor s popisom izvora */
+.msg-sources-btn {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  background: transparent;
+  color: var(--boja-primarna);
+  border: 1px solid var(--boja-rub);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.msg-sources-btn:hover { background: var(--boja-primarna); color: #fff; border-color: var(--boja-primarna); }
+
+/* Skočni prozor (modal) s izvorima — manjih dimenzija, zatvara se klikom/Esc */
+.sources-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+.sources-modal {
+  background: var(--boja-bijela);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 420px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+.sources-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sources-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.sources-modal-close:hover { background: var(--boja-pozadina); color: var(--boja-tekst); }
+.sources-modal ul { margin: 0; padding-left: 18px; font-size: 0.86rem; }
+.sources-modal li { margin: 6px 0; }
+.sources-modal a { color: var(--boja-primarna); }
 
 .chat-input {
   display: flex;

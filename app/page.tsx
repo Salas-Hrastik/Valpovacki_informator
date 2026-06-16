@@ -6,8 +6,8 @@ export default function HomePage() {
       <header className="page-header">
         <h1>Valpovački AI gradski informator</h1>
         <p>
-          Postavite pitanje o uslugama gradske uprave, natječajima, komunalnim temama i
-          događanjima u Gradu Valpovu i pripadajućim naseljima.
+          Dobro došli! Postavite pitanje o uslugama gradske uprave, natječajima, komunalnim
+          temama, ustanovama i događanjima u Gradu Valpovu i pripadajućim naseljima.
         </p>
       </header>
       <Chat />
