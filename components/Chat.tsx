@@ -4,7 +4,7 @@
  * Glavna chat komponenta — koristi se na početnoj stranici i u embed widgetu.
  * Čita SSE stream s /api/chat i prikazuje odgovor s citatima izvora.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -20,11 +20,6 @@ interface Message {
   content: string;
   sources?: Source[];
 }
-
-const UVODNA_PORUKA =
-  'Poštovani, dobro došli! Ja sam Valpovački AI gradski informator. ' +
-  'Slobodno me pitajte o uslugama gradske uprave, natječajima, komunalnim temama, ' +
-  'ustanovama i događanjima u Gradu Valpovu i pripadajućim naseljima.';
 
 // Brzi prijedlozi pitanja — prikazuju se na početku da građanin odmah vidi
 // što može pitati. Klik šalje pitanje izravno.
@@ -43,14 +38,24 @@ function formatDateHr(iso: string): string {
 }
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: UVODNA_PORUKA },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  // Indeks poruke čiji je skočni prozor s izvorima trenutačno otvoren (ili null).
+  const [sourcesIdx, setSourcesIdx] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Zatvaranje skočnog prozora s izvorima tipkom Esc.
+  useEffect(() => {
+    if (sourcesIdx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSourcesIdx(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sourcesIdx]);
 
   const scrollDown = () =>
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }));
@@ -64,13 +69,14 @@ export default function Chat() {
     if (taRef.current) taRef.current.style.height = 'auto';
   };
 
-  // Reset razgovora na uvodnu poruku.
+  // Reset razgovora — praznimo poruke (dobrodošlica je stalno ispod naslova).
   const newConversation = () => {
     if (busy) return;
-    setMessages([{ role: 'assistant', content: UVODNA_PORUKA }]);
+    setMessages([]);
     setInput('');
     resetInputHeight();
     setCopiedIdx(null);
+    setSourcesIdx(null);
   };
 
   // Kopiranje odgovora u međuspremnik uz kratku potvrdu.
@@ -93,7 +99,7 @@ export default function Chat() {
     }
     setBusy(true);
 
-    const history = messages.filter((m, i) => !(i === 0 && m.role === 'assistant'));
+    const history = messages;
     const next: Message[] = [...messages, { role: 'user', content: question }];
     setMessages([...next, { role: 'assistant', content: '' }]);
     scrollDown();
@@ -164,7 +170,7 @@ export default function Chat() {
 
   return (
     <div className="chat" aria-busy={busy}>
-      {messages.length > 1 && (
+      {messages.length > 0 && (
         <div className="chat-toolbar">
           <button type="button" className="chat-reset" onClick={newConversation} disabled={busy}>
             ↺ Novi razgovor
@@ -206,19 +212,14 @@ export default function Chat() {
                 ''
               )}
               {m.sources && m.sources.length > 0 && (
-                <div className="msg-sources">
-                  <strong>Izvori:</strong>
-                  <ul>
-                    {m.sources.map((s) => (
-                      <li key={s.url}>
-                        <a href={s.url} target="_blank" rel="noopener noreferrer">
-                          {s.title}
-                        </a>{' '}
-                        <span className="msg-source-date">(provjereno: {formatDateHr(s.fetched_at)})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <button
+                  type="button"
+                  className="msg-sources-btn"
+                  onClick={() => setSourcesIdx(i)}
+                  aria-haspopup="dialog"
+                >
+                  Izvori ({m.sources.length})
+                </button>
               )}
               {m.role === 'assistant' && i > 0 && m.content && !(busy && i === messages.length - 1) && (
                 <button
@@ -234,7 +235,7 @@ export default function Chat() {
           </div>
         ))}
 
-        {messages.length === 1 && !busy && (
+        {messages.length === 0 && !busy && (
           <div className="chat-suggestions" aria-label="Prijedlozi pitanja">
             {PRIJEDLOZI.map((q) => (
               <button key={q} type="button" className="chip" onClick={() => void send(q)}>
@@ -283,6 +284,44 @@ export default function Chat() {
         (<a href="https://valpovo.hr" target="_blank" rel="noopener noreferrer">valpovo.hr</a>).
         Molimo ne unosite osobne podatke.
       </p>
+
+      {sourcesIdx !== null && messages[sourcesIdx]?.sources && (
+        <div
+          className="sources-modal-backdrop"
+          role="presentation"
+          onClick={() => setSourcesIdx(null)}
+        >
+          <div
+            className="sources-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Izvori"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sources-modal-head">
+              <strong>Izvori</strong>
+              <button
+                type="button"
+                className="sources-modal-close"
+                onClick={() => setSourcesIdx(null)}
+                aria-label="Zatvori"
+              >
+                ✕
+              </button>
+            </div>
+            <ul>
+              {messages[sourcesIdx]!.sources!.map((s) => (
+                <li key={s.url}>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer">
+                    {s.title}
+                  </a>{' '}
+                  <span className="msg-source-date">(provjereno: {formatDateHr(s.fetched_at)})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
