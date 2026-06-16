@@ -178,7 +178,18 @@ export async function fetchResource(url: string): Promise<FetchedResource | null
 
   const contentType = res.headers.get('content-type') ?? '';
   if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
-    return { url, contentType: 'pdf', buffer: Buffer.from(await res.arrayBuffer()) };
+    // Granica veličine: golem PDF (npr. skenirani višestranični) troši memoriju i
+    // dugo se parsira. Odbij rano po Content-Length, a i nakon preuzimanja (zaglavlje
+    // zna nedostajati ili lagati), da jedan PDF ne sruši/uspori cijeli ingest.
+    const declared = Number(res.headers.get('content-length') ?? '');
+    if (Number.isFinite(declared) && declared > config.maxPdfBytes) {
+      throw new Error(`PDF prevelik (${Math.round(declared / 1024 / 1024)} MB > granica)`);
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.byteLength > config.maxPdfBytes) {
+      throw new Error(`PDF prevelik (${Math.round(buffer.byteLength / 1024 / 1024)} MB > granica)`);
+    }
+    return { url, contentType: 'pdf', buffer };
   }
   if (contentType.includes('text/html') || contentType === '') {
     return { url, contentType: 'html', html: await res.text() };

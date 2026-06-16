@@ -7,6 +7,7 @@ import * as cheerio from 'cheerio';
 // (debug grana u index.js pokušava čitati testnu datoteku).
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { normalizeText } from '../chunking';
+import { config } from '../config';
 
 export interface ExtractedDocument {
   title: string;
@@ -57,13 +58,31 @@ export function extractFromHtml(html: string, url: string): ExtractedDocument {
 }
 
 export async function extractFromPdf(buffer: Buffer, url: string): Promise<ExtractedDocument> {
-  const data = await pdfParse(buffer);
+  // pdf-parse je sinkrono CPU-parsiranje BEZ vlastitog timeouta — pokvaren ili
+  // golem PDF može vrtjeti unedogled i zaustaviti cijeli ingest. Ograničavamo ga
+  // utrkom s timeoutom; ako istekne, baca se greška (URL ide u "neuspjele", run se
+  // nastavlja). Napomena: timeout ne može prekinuti samo CPU-parsiranje, ali jamči
+  // da se obrada dokumenta ne zaglavi i da petlja krene dalje.
+  const data = await withTimeout(
+    pdfParse(buffer),
+    config.pdfParseTimeoutMs,
+    `pdf-parse timeout (${config.pdfParseTimeoutMs} ms)`,
+  );
   const title = (data.info?.Title as string | undefined)?.trim() || fileNameFromUrl(url);
   return {
     title,
     text: normalizeText(data.text || ''),
     publishedAt: toIsoOrNull((data.info?.CreationDate as string | undefined) ?? null),
   };
+}
+
+/** Odbacuje obećanje ako ne završi unutar zadanog vremena. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
 }
 
 /**

@@ -128,6 +128,10 @@ export const config = {
   // INGEST_FORCE=1 preskače provjeru svježine (obradi SVE stranice ovaj prolaz) —
   // korisno za jednokratno otkrivanje svih PDF poveznica bez čekanja da stranice "ostare".
   ingestForce: process.env.INGEST_FORCE === '1',
+  // Zaštita PDF-koraka: timeout za pdf-parse (CPU parsiranje nema vlastiti timeout
+  // pa pokvaren/golem PDF može zaglaviti cijeli ingest) i gornja granica veličine.
+  pdfParseTimeoutMs: int('PDF_PARSE_TIMEOUT_MS', 20_000),
+  maxPdfBytes: int('MAX_PDF_BYTES', 25 * 1024 * 1024),
 
   lang: process.env.LANG_HR || process.env.LANG || 'hr',
 };
