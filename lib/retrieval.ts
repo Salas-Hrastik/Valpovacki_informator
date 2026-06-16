@@ -10,6 +10,7 @@
  */
 import { config } from './config';
 import { embedText } from './embeddings';
+import { rerankChunks } from './rerank';
 import { supabaseAdmin } from './supabase';
 
 export interface RetrievedChunk {
@@ -35,24 +36,26 @@ export async function retrieve(
   const topK = options.topK ?? config.ragTopK;
   const threshold = options.scoreThreshold ?? config.ragScoreThreshold;
   const sb = supabaseAdmin();
+  // Za reranking dohvaćamo ŠIRI skup kandidata pa ih LLM presloži po relevantnosti.
+  const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
-  // 1) Vektorsko pretraživanje
+  // 1) Vektorsko pretraživanje (širi skup)
   const queryEmbedding = await embedText(query);
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
     query_embedding: JSON.stringify(queryEmbedding), // pgvector prima '[...]' literal
-    match_count: topK,
+    match_count: poolSize,
     score_threshold: threshold,
   });
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
   const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
-  // 2) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Ključno za
-  // činjenična pitanja i popise (imena vijećnika, brojevi, kontakti) koje vektorsko
-  // pretraživanje slabo rangira jer se popis imena semantički ne poklapa s upitom.
+  // 2) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Šaljemo samo
+  // ZNAČAJNE riječi (≥4 slova) — brže i preciznije: izbjegavamo skupe prefiks-upite
+  // za česte kratke riječi ("tko", "su", "za") koje pogađaju stotine isječaka.
   let fts: RetrievedChunk[] = [];
   if (config.ragFtsFallback) {
     const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
-      query_text: query,
+      query_text: lexicalQuery(query),
       match_count: topK,
     });
     if (!ftsErr && ftsRows) {
@@ -63,9 +66,8 @@ export async function retrieve(
     }
   }
 
-  // 3) Hibridno ISPREPLITANJE (~2 vektor : 1 FTS). Bez ovoga bi, kad vektor vrati
-  // pun set, leksički pogoci (npr. službena stranica "Aktualni sastav" s imenima)
-  // uvijek završili ispod praga i bili odrezani. Ovako im se jamči mjesto u kontekstu.
+  // 3) Skup kandidata: ispleti vektor+FTS (FTS zajamčeno zastupljen), filtriraj
+  // domene, ograniči na poolSize.
   const hosts = options.allowedHosts ?? config.allowedHosts;
   const isAllowedHostUrl = (u: string): boolean => {
     try {
@@ -74,19 +76,23 @@ export async function retrieve(
       return false;
     }
   };
-  const ordered: RetrievedChunk[] = [];
+  const candidates: RetrievedChunk[] = [];
   let vi = 0;
   let fi = 0;
   let k = 0;
-  while (vi < vec.length || fi < fts.length) {
+  while ((vi < vec.length || fi < fts.length) && candidates.length < poolSize) {
     const takeFts = (k % 3 === 2 && fi < fts.length) || vi >= vec.length;
     const r = takeFts ? fts[fi++] : vec[vi++];
-    if (r && isAllowedHostUrl(r.url)) ordered.push(r);
+    if (r && isAllowedHostUrl(r.url)) candidates.push(r);
     k++;
   }
 
-  // 4) Deduplikacija po URL-u (najviše 3 isječka) + proračun konteksta, u redoslijedu
-  // prioriteta (NE sortiramo po rezultatu — ispreplitanje već nosi prioritet).
+  // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
+  // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
+  const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
+
+  // 5) Deduplikacija po URL-u (najviše 3 isječka) + proračun konteksta, u redoslijedu
+  // prioriteta (NE sortiramo po rezultatu — rerank/ispreplitanje već nose prioritet).
   const perUrl = new Map<string, number>();
   const final: RetrievedChunk[] = [];
   let budget = config.ragContextCharBudget;
@@ -100,6 +106,19 @@ export async function retrieve(
     if (final.length >= topK) break;
   }
   return final;
+}
+
+/**
+ * Iz upita zadržava samo značajne riječi (≥4 slova/znamenke) za leksičku pretragu.
+ * Izbacuje česte kratke riječi (tko, su, za, na, i…) koje bi prefiks-upit učinile
+ * sporim i nepreciznim. Ako ne ostane ništa, vraća izvorni upit.
+ */
+function lexicalQuery(query: string): string {
+  const words = query
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter((w) => w.length >= 4);
+  return words.length > 0 ? words.join(' ') : query;
 }
 
 /** Jedinstveni popis izvora (za prikaz citata ispod odgovora). */

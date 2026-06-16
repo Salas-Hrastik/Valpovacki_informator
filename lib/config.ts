@@ -110,6 +110,11 @@ export const config = {
   ragScoreThreshold: float('RAG_SCORE_THRESHOLD', 0.30),
   ragFtsFallback: process.env.RAG_FTS_FALLBACK !== '0',
   ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
+  // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
+  // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika).
+  ragRerank: process.env.RAG_RERANK !== '0',
+  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 24),
+  rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
