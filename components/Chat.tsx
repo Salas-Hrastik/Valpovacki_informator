@@ -6,6 +6,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Source {
   title: string;
@@ -184,6 +185,7 @@ export default function Chat() {
               {m.content ? (
                 <div className="msg-text">
                   <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       // Poveznice se otvaraju u novoj kartici, sigurno (noopener).
                       a: ({ node, ...props }) => (
