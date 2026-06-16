@@ -8,11 +8,13 @@ import * as cheerio from 'cheerio';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { normalizeText } from '../chunking';
 import { config } from '../config';
+import { ocrPdf } from './ocr';
 
 export interface ExtractedDocument {
   title: string;
   text: string;
   publishedAt: string | null; // ISO ili null
+  ocr?: boolean; // true ako je tekst dobiven OCR-om (skenirani PDF)
 }
 
 /** Elementi koji su gotovo uvijek boilerplate i ne nose sadržaj. */
@@ -69,11 +71,27 @@ export async function extractFromPdf(buffer: Buffer, url: string): Promise<Extra
     `pdf-parse timeout (${config.pdfParseTimeoutMs} ms)`,
   );
   const title = (data.info?.Title as string | undefined)?.trim() || fileNameFromUrl(url);
-  return {
-    title,
-    text: normalizeText(data.text || ''),
-    publishedAt: toIsoOrNull((data.info?.CreationDate as string | undefined) ?? null),
-  };
+  const text = normalizeText(data.text || '');
+  const publishedAt = toIsoOrNull((data.info?.CreationDate as string | undefined) ?? null);
+
+  // OCR fallback: ako pdf-parse nije izvukao tekst, dokument je vjerojatno
+  // skeniran (slika stranice). Pošalji ga Claudeu na OCR — ali samo uz granice
+  // broja stranica i veličine, da trošak ostane zanemariv.
+  if (config.ocrEnabled && text.length < config.ocrMinTextLen) {
+    const pages = (data.numpages as number | undefined) ?? 0;
+    if (pages > config.ocrMaxPages) {
+      console.warn(`[ocr] preskačem ${url} — ${pages} str. > granica (${config.ocrMaxPages}).`);
+    } else if (buffer.byteLength > config.ocrMaxBytes) {
+      console.warn(`[ocr] preskačem ${url} — ${Math.round(buffer.byteLength / 1024 / 1024)} MB > granica.`);
+    } else {
+      const ocrText = normalizeText(await ocrPdf(buffer, url));
+      if (ocrText.length >= config.ocrMinTextLen) {
+        return { title, text: ocrText, publishedAt, ocr: true };
+      }
+    }
+  }
+
+  return { title, text, publishedAt };
 }
 
 /** Odbacuje obećanje ako ne završi unutar zadanog vremena. */
