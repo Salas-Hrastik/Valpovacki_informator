@@ -7,9 +7,10 @@ import { CRAWLER_USER_AGENT, isAllowedByRobots } from './robots';
 
 export interface FetchedResource {
   url: string;
-  contentType: 'html' | 'pdf';
+  contentType: 'html' | 'pdf' | 'image';
   html?: string;
   buffer?: Buffer;
+  mediaType?: string; // za slike: image/jpeg | image/png | image/gif | image/webp
 }
 
 /** Je li host URL-a na popisu dopuštenih domena? */
@@ -170,7 +171,10 @@ export async function fetchResource(url: string): Promise<FetchedResource | null
   }
 
   const res = await fetch(url, {
-    headers: { 'User-Agent': CRAWLER_USER_AGENT, Accept: 'text/html,application/pdf;q=0.9,*/*;q=0.5' },
+    headers: {
+      'User-Agent': CRAWLER_USER_AGENT,
+      Accept: 'text/html,application/pdf;q=0.9,image/*;q=0.8,*/*;q=0.5',
+    },
     signal: AbortSignal.timeout(30_000),
     redirect: 'follow',
   });
@@ -194,7 +198,32 @@ export async function fetchResource(url: string): Promise<FetchedResource | null
   if (contentType.includes('text/html') || contentType === '') {
     return { url, contentType: 'html', html: await res.text() };
   }
-  return null; // ostale vrste sadržaja (slike i sl.) preskačemo
+  // Slike (plakati, banneri) — dohvaćamo radi OCR-a. Claude vision podržava
+  // jpeg/png/gif/webp; ostale formate (npr. svg) preskačemo.
+  const mediaType = imageMediaType(contentType, url);
+  if (mediaType) {
+    const declared = Number(res.headers.get('content-length') ?? '');
+    if (Number.isFinite(declared) && declared > config.ocrImageMaxBytes) {
+      throw new Error(`Slika prevelika (${Math.round(declared / 1024)} kB > granica)`);
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.byteLength > config.ocrImageMaxBytes) {
+      throw new Error(`Slika prevelika (${Math.round(buffer.byteLength / 1024)} kB > granica)`);
+    }
+    return { url, contentType: 'image', buffer, mediaType };
+  }
+  return null; // ostale vrste sadržaja preskačemo
+}
+
+/** Mapira content-type/ekstenziju u medijski tip koji Claude vision podržava (ili null). */
+function imageMediaType(contentType: string, url: string): string | null {
+  const ct = contentType.toLowerCase();
+  const path = (() => { try { return new URL(url).pathname.toLowerCase(); } catch { return url.toLowerCase(); } })();
+  if (ct.includes('image/jpeg') || ct.includes('image/jpg') || /\.jpe?g$/.test(path)) return 'image/jpeg';
+  if (ct.includes('image/png') || /\.png$/.test(path)) return 'image/png';
+  if (ct.includes('image/webp') || /\.webp$/.test(path)) return 'image/webp';
+  if (ct.includes('image/gif') || /\.gif$/.test(path)) return 'image/gif';
+  return null; // svg, bmp, ico, … — ne podržava se OCR
 }
 
 export function normalizeUrl(url: string): string {

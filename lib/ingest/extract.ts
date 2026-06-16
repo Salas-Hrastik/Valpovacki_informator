@@ -8,7 +8,7 @@ import * as cheerio from 'cheerio';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { normalizeText } from '../chunking';
 import { config } from '../config';
-import { ocrPdf } from './ocr';
+import { ocrImage, ocrPdf } from './ocr';
 
 export interface ExtractedDocument {
   title: string;
@@ -94,6 +94,25 @@ export async function extractFromPdf(buffer: Buffer, url: string): Promise<Extra
   return { title, text, publishedAt };
 }
 
+/**
+ * OCR samostalne slike (plakat/banner). Vraća ekstrahirani dokument s tekstom
+ * pročitanim s slike (ocr: true). Wrapano u timeout radi sigurnosti.
+ */
+export async function extractFromImage(
+  buffer: Buffer,
+  mediaType: string,
+  url: string,
+): Promise<ExtractedDocument> {
+  const text = normalizeText(
+    await withTimeout(
+      ocrImage(buffer, mediaType, url),
+      config.pdfParseTimeoutMs,
+      `ocr-image timeout (${config.pdfParseTimeoutMs} ms)`,
+    ),
+  );
+  return { title: fileNameFromUrl(url), text, publishedAt: null, ocr: true };
+}
+
 /** Odbacuje obećanje ako ne završi unutar zadanog vremena. */
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
@@ -123,6 +142,55 @@ export function extractPdfLinks(html: string, baseUrl: string): string[] {
     } catch {
       /* nevažeći href — preskoči */
     }
+  });
+  return [...out];
+}
+
+// Nazivi koji gotovo uvijek označavaju ukrasne slike (logotipi, ikone, pozadine) —
+// njih NE šaljemo na OCR jer nemaju koristan tekst i samo troše proračun.
+const IMAGE_SKIP_KEYWORDS = [
+  'logo', 'icon', 'favicon', 'sprite', 'avatar', 'placeholder', 'spinner',
+  'loader', 'loading', 'blank', 'pixel', 'background', 'arrow', 'flag',
+  'separator', 'divider', 'button', 'badge', 'watermark', 'thumb',
+];
+
+/**
+ * Pronalazi SAMOSTALNE slike (plakate/bannere) unutar HTML stranice koje su
+ * kandidati za OCR (npr. plakat s datumom Ljeta valpovačkog). Vraća apsolutne
+ * URL-ove. Strogo filtrirano: samo jpeg/png/webp/gif, bez logotipa/ikona, uz
+ * granicu dimenzija (kad su atributi prisutni) i najviše N po stranici.
+ */
+export function extractImageLinks(html: string, baseUrl: string): string[] {
+  const $ = cheerio.load(html);
+  const out = new Set<string>();
+  const minDim = config.ocrImageMinDimension;
+
+  $('img').each((_, el) => {
+    if (out.size >= config.ocrImageMaxPerPage) return;
+    const $el = $(el);
+    const raw =
+      $el.attr('src') || $el.attr('data-src') || $el.attr('data-lazy-src') || $el.attr('data-original');
+    if (!raw || raw.startsWith('data:')) return;
+
+    let abs: URL;
+    try {
+      abs = new URL(raw, baseUrl);
+    } catch {
+      return;
+    }
+    const path = abs.pathname.toLowerCase();
+    if (!/\.(jpe?g|png|webp|gif)$/.test(path)) return;
+    if (IMAGE_SKIP_KEYWORDS.some((k) => path.includes(k))) return;
+
+    // Filtar dimenzija: ako su width/height atributi navedeni i sitni su, preskoči
+    // (logotipi/ikone). Ako atributa nema, oslanjamo se na filtar naziva + granicu po stranici.
+    const w = parseInt($el.attr('width') || '', 10);
+    const h = parseInt($el.attr('height') || '', 10);
+    if (Number.isFinite(w) && w > 0 && w < minDim && (!Number.isFinite(h) || h < minDim)) return;
+    if (Number.isFinite(h) && h > 0 && h < minDim && (!Number.isFinite(w) || w < minDim)) return;
+
+    abs.hash = '';
+    out.add(abs.toString());
   });
   return [...out];
 }
