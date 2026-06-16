@@ -44,46 +44,53 @@ export async function retrieve(
     score_threshold: threshold,
   });
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
-  let results: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
+  const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
   // 2) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Ključno za
   // činjenična pitanja i popise (imena vijećnika, brojevi, kontakti) koje vektorsko
   // pretraživanje slabo rangira jer se popis imena semantički ne poklapa s upitom.
-  // FTS pogoci dobivaju konzervativan rezultat pa vektorski i dalje imaju prednost.
+  let fts: RetrievedChunk[] = [];
   if (config.ragFtsFallback) {
     const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
       query_text: query,
       match_count: topK,
     });
     if (!ftsErr && ftsRows) {
-      const seen = new Set(results.map((r) => r.chunk_id));
-      for (const row of ftsRows as RetrievedChunk[]) {
-        if (!seen.has(row.chunk_id)) {
-          // FTS rang nije usporediv s kosinusnom sličnošću — dodjeljujemo
-          // konzervativan rezultat kako bi vektorski pogoci imali prednost.
-          results.push({ ...row, score: Math.min(row.score, threshold) });
-          seen.add(row.chunk_id);
-        }
-      }
+      const vecIds = new Set(vec.map((r) => r.chunk_id));
+      fts = (ftsRows as RetrievedChunk[])
+        .filter((r) => !vecIds.has(r.chunk_id))
+        .map((r) => ({ ...r, score: Math.min(r.score, threshold) }));
     }
   }
 
-  // 3) Sigurnosni filtar domena u citatima
+  // 3) Hibridno ISPREPLITANJE (~2 vektor : 1 FTS). Bez ovoga bi, kad vektor vrati
+  // pun set, leksički pogoci (npr. službena stranica "Aktualni sastav" s imenima)
+  // uvijek završili ispod praga i bili odrezani. Ovako im se jamči mjesto u kontekstu.
   const hosts = options.allowedHosts ?? config.allowedHosts;
-  results = results.filter((r) => {
+  const isAllowedHostUrl = (u: string): boolean => {
     try {
-      return hosts.includes(new URL(r.url).hostname);
+      return hosts.includes(new URL(u).hostname);
     } catch {
       return false;
     }
-  });
+  };
+  const ordered: RetrievedChunk[] = [];
+  let vi = 0;
+  let fi = 0;
+  let k = 0;
+  while (vi < vec.length || fi < fts.length) {
+    const takeFts = (k % 3 === 2 && fi < fts.length) || vi >= vec.length;
+    const r = takeFts ? fts[fi++] : vec[vi++];
+    if (r && isAllowedHostUrl(r.url)) ordered.push(r);
+    k++;
+  }
 
-  // 4) Deduplikacija po URL-u (najviše 2 isječka po dokumentu) + proračun konteksta
-  results.sort((a, b) => b.score - a.score);
+  // 4) Deduplikacija po URL-u (najviše 3 isječka) + proračun konteksta, u redoslijedu
+  // prioriteta (NE sortiramo po rezultatu — ispreplitanje već nosi prioritet).
   const perUrl = new Map<string, number>();
   const final: RetrievedChunk[] = [];
   let budget = config.ragContextCharBudget;
-  for (const r of results) {
+  for (const r of ordered) {
     const n = perUrl.get(r.url) ?? 0;
     if (n >= 3) continue; // do 3 isječka po dokumentu (popisi imena znaju biti duži)
     if (r.text.length > budget) continue;
