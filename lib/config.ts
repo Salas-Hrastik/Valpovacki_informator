@@ -132,6 +132,16 @@ export const config = {
   // pa pokvaren/golem PDF može zaglaviti cijeli ingest) i gornja granica veličine.
   pdfParseTimeoutMs: int('PDF_PARSE_TIMEOUT_MS', 20_000),
   maxPdfBytes: int('MAX_PDF_BYTES', 25 * 1024 * 1024),
+  // OCR fallback za skenirane (slikovne) PDF-ove bez tekstualnog sloja: pdf-parse
+  // iz njih ne izvuče tekst, pa isti PDF šaljemo Claudeu (document blok) koji
+  // interno radi OCR. Okida se samo kad pdf-parse vrati < ocrMinTextLen znakova,
+  // i to uz stroge granice (broj stranica i veličina) radi kontrole troška.
+  ocrEnabled: process.env.OCR_ENABLED !== '0',
+  ocrModel: process.env.OCR_MODEL || 'claude-sonnet-4-6',
+  ocrMinTextLen: int('OCR_MIN_TEXT_LEN', 80),
+  ocrMaxPages: int('OCR_MAX_PAGES', 10),
+  ocrMaxBytes: int('OCR_MAX_BYTES', 10 * 1024 * 1024),
+  ocrMaxTokens: int('OCR_MAX_TOKENS', 4096),
 
   lang: process.env.LANG_HR || process.env.LANG || 'hr',
 };

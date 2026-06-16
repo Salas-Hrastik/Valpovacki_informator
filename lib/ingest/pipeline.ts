@@ -27,6 +27,7 @@ export interface IngestStats {
   unchanged: number;
   skippedFresh: number;
   failed: number;
+  ocrUsed: number; // koliko je dokumenata obrađeno OCR-om (skenirani PDF-ovi)
   failedUrls: string[];
   durationMs: number;
 }
@@ -39,7 +40,7 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   const sb = supabaseAdmin();
   const stats: IngestStats = {
     totalUrls: 0, processed: 0, inserted: 0, updated: 0,
-    unchanged: 0, skippedFresh: 0, failed: 0, failedUrls: [], durationMs: 0,
+    unchanged: 0, skippedFresh: 0, failed: 0, ocrUsed: 0, failedUrls: [], durationMs: 0,
   };
 
   const allUrls = await gatherUrls();
@@ -147,8 +148,12 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
 
       if (previousHash === undefined) stats.inserted++;
       else stats.updated++;
+      if (extracted.ocr) stats.ocrUsed++;
       stats.processed++;
-      console.log(`[ingest] OK (${previousHash === undefined ? 'novo' : 'ažurirano'}): ${url} — ${chunks.length} isječaka`);
+      console.log(
+        `[ingest] OK (${previousHash === undefined ? 'novo' : 'ažurirano'}${extracted.ocr ? ', OCR' : ''}): ` +
+          `${url} — ${chunks.length} isječaka`,
+      );
     } catch (e) {
       stats.failed++;
       stats.failedUrls.push(url);
@@ -182,7 +187,7 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   console.log(
     `[ingest] Završeno za ${Math.round(stats.durationMs / 1000)} s — ` +
       `novo: ${stats.inserted}, ažurirano: ${stats.updated}, nepromijenjeno: ${stats.unchanged}, ` +
-      `preskočeno (svježe): ${stats.skippedFresh}, neuspjelo: ${stats.failed}`,
+      `preskočeno (svježe): ${stats.skippedFresh}, OCR: ${stats.ocrUsed}, neuspjelo: ${stats.failed}`,
   );
   return stats;
 }
