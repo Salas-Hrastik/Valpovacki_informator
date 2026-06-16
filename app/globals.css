@@ -121,6 +121,25 @@ body {
 .msg-text ul, .msg-text ol { margin: 4px 0 8px; padding-left: 20px; }
 .msg-text a { color: var(--boja-primarna); text-decoration: underline; }
 
+/* Tablice (npr. proračunske stavke): pregledan prikaz s vodoravnim klizanjem na
+   uskim ekranima da široke tablice ne razbiju razgovor. */
+.msg-text table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 0.9rem;
+  display: block;
+  overflow-x: auto;
+}
+.msg-text th, .msg-text td {
+  border: 1px solid var(--boja-rub);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.msg-text thead th { background: var(--boja-pozadina-blago, #f3f4f6); font-weight: 600; }
+.msg-text tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.025); }
+
 .msg-sources { margin-top: 10px; font-size: 0.85rem; border-top: 1px solid var(--boja-rub); padding-top: 8px; }
 .msg-sources ul { margin: 4px 0 0; padding-left: 18px; }
 .msg-sources a { color: var(--boja-primarna); }
