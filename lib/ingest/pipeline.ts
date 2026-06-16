@@ -10,7 +10,13 @@ import { chunkText } from '../chunking';
 import { embedTexts, l2norm } from '../embeddings';
 import { supabaseAdmin } from '../supabase';
 import { fetchResource, gatherUrls, isAllowedHost, sleep } from './crawler';
-import { extractFromHtml, extractFromPdf, extractPdfLinks } from './extract';
+import {
+  extractFromHtml,
+  extractFromImage,
+  extractFromPdf,
+  extractImageLinks,
+  extractPdfLinks,
+} from './extract';
 
 // Prozor svježine: dokument provjeren unutar zadnjih FRESH_DAYS dana preskačemo.
 // Postavljen ispod tjednog ciklusa (7 dana) kako bismo izbjegli rad samo s
@@ -75,9 +81,17 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
   stats.totalUrls = urls.length;
   console.log(`[ingest] Za obradu (najstarije provjereni prvi): ${urls.length} URL-ova.`);
 
-  // PDF-ovi otkriveni praćenjem poveznica na HTML stranicama (nisu u sitemapu).
+  // PDF-ovi i slike otkriveni praćenjem poveznica na HTML stranicama (nisu u sitemapu).
   const discoveredPdfs = new Set<string>();
+  const discoveredImages = new Set<string>();
   const processedUrls = new Set<string>();
+
+  // Je li dokument provjeren nedavno (pa ga preskačemo)? Koristi se za proračun OCR-a slika.
+  const isFresh = (u: string): boolean => {
+    if (config.ingestForce) return false;
+    const p = existingMap.get(u);
+    return !!(p && p.fetchedAt && Date.now() - new Date(p.fetchedAt).getTime() < FRESH_MS);
+  };
 
   async function processUrl(url: string): Promise<void> {
     if (processedUrls.has(url)) return;
@@ -97,17 +111,25 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       const resource = await fetchResource(url);
       if (!resource) return;
 
-      // Otkrivanje PDF poveznica na stranici (proračuni, odluke, zapisnici…)
+      // Otkrivanje PDF i slikovnih poveznica na stranici (proračuni, odluke,
+      // zapisnici, plakati s datumima manifestacija…)
       if (resource.contentType === 'html' && resource.html) {
         for (const link of extractPdfLinks(resource.html, url)) {
           if (isAllowedHost(link)) discoveredPdfs.add(link);
+        }
+        if (config.ocrImagesEnabled) {
+          for (const link of extractImageLinks(resource.html, url)) {
+            if (isAllowedHost(link)) discoveredImages.add(link);
+          }
         }
       }
 
       const extracted =
         resource.contentType === 'pdf'
           ? await extractFromPdf(resource.buffer!, url)
-          : extractFromHtml(resource.html!, url);
+          : resource.contentType === 'image'
+            ? await extractFromImage(resource.buffer!, resource.mediaType!, url)
+            : extractFromHtml(resource.html!, url);
 
       if (extracted.text.length < 80) return;
 
@@ -181,6 +203,29 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
       break;
     }
     await processUrl(url);
+  }
+
+  // Treći prolaz: slike (plakati/banneri) otkrivene na stranicama — OCR preko
+  // Claude visiona. Ograničeno UKUPNIM proračunom po pokretanju (ocrImageMaxTotal);
+  // svježe (nedavno provjerene) slike ne troše proračun jer se ionako preskaču.
+  if (config.ocrImagesEnabled) {
+    const imageList = [...discoveredImages].filter((u) => !processedUrls.has(u));
+    if (imageList.length > 0) {
+      console.log(
+        `[ingest] Otkriveno ${imageList.length} slika za OCR — obrađujem (proračun: ${config.ocrImageMaxTotal}).`,
+      );
+    }
+    let imageBudget = config.ocrImageMaxTotal;
+    for (const url of imageList) {
+      if (Date.now() > deadline) {
+        console.warn('[ingest] Vremenski limit — preostale slike idući put.');
+        break;
+      }
+      const willOcr = !isFresh(url) && !processedUrls.has(url);
+      if (willOcr && imageBudget <= 0) continue; // proračun potrošen — ostavi za idući put
+      await processUrl(url);
+      if (willOcr) imageBudget--;
+    }
   }
 
   stats.durationMs = Date.now() - startedAt;

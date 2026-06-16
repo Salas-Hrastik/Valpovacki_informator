@@ -20,6 +20,12 @@ const OCR_PROMPT =
   'niti objašnjenja — vrati isključivo prepisani tekst. Ako u dokumentu nema ' +
   'čitljivog teksta, vrati prazan odgovor.';
 
+const OCR_IMAGE_PROMPT =
+  'Ovo je slika (npr. plakat ili banner). Prepiši TOČNO sav vidljivi tekst sa slike, ' +
+  'uključujući naslove, DATUME, vrijeme i mjesto održavanja, redom kako se pojavljuju. ' +
+  'NE dodaji komentare ni objašnjenja — vrati isključivo prepisani tekst. Ako na slici ' +
+  'nema čitljivog teksta, vrati prazan odgovor.';
+
 /**
  * Šalje PDF Claudeu na OCR i vraća prepisani tekst (može biti prazan string
  * ako dokument nema čitljivog teksta). Baca grešku ako poziv ne uspije —
@@ -54,5 +60,41 @@ export async function ocrPdf(buffer: Buffer, url: string): Promise<string> {
     .trim();
 
   console.log(`[ocr] ${url} — ${text.length} znakova (model: ${config.ocrModel})`);
+  return text;
+}
+
+/**
+ * OCR samostalne slike (plakat/banner) preko Claude visiona. Vraća prepisani
+ * tekst (može biti prazan). Baca grešku ako poziv ne uspije.
+ */
+export async function ocrImage(buffer: Buffer, mediaType: string, url: string): Promise<string> {
+  const anthropic = new Anthropic();
+  const msg = await anthropic.messages.create({
+    model: config.ocrModel,
+    max_tokens: config.ocrMaxTokens,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              data: buffer.toString('base64'),
+            },
+          },
+          { type: 'text', text: OCR_IMAGE_PROMPT },
+        ],
+      },
+    ],
+  });
+
+  const text = msg.content
+    .map((b) => (b.type === 'text' ? b.text : ''))
+    .join('')
+    .trim();
+
+  console.log(`[ocr-image] ${url} — ${text.length} znakova (model: ${config.ocrModel})`);
   return text;
 }

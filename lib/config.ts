@@ -70,8 +70,10 @@ const EXCLUDE_URL_PATTERNS_DEFAULT = [
   // WordPress arhive/feedovi/sistem
   '/tag/', '/page/', '/author/', '/category/', '/feed', '/wp-json',
   '?replytocom', '/attachment/', '/comment-page-', '/wp-content/uploads/',
-  // Galerije i listanja (plugin-stranice bez tekstualne vrijednosti)
-  '/rl_gallery/', '/kino-korner/', '/events/', '/eventi/', '/event/',
+  // Galerije i listanja (plugin-stranice bez tekstualne vrijednosti).
+  // NAPOMENA: stranice događanja (/events/, /eventi/, /event/) NAMJERNO se više
+  // ne isključuju — nose datume manifestacija (npr. Ljeto valpovačko).
+  '/rl_gallery/', '/kino-korner/',
   '/program-category/', '/kategorija-djelatnika/',
   // Stare datumske arhive vijesti: izbacujemo godine <= 2024 (zadržavamo 2025./2026.).
   // Uzorak "re:" se tretira kao regex; traži /GODINA/ omeđenu kosim crtama.
@@ -142,6 +144,15 @@ export const config = {
   ocrMaxPages: int('OCR_MAX_PAGES', 10),
   ocrMaxBytes: int('OCR_MAX_BYTES', 10 * 1024 * 1024),
   ocrMaxTokens: int('OCR_MAX_TOKENS', 4096),
+  // OCR za SAMOSTALNE SLIKE (plakati/banneri, npr. datum Ljeta valpovačkog na
+  // naslovnici). Otkrivaju se na HTML stranicama (extractImageLinks) i šalju
+  // Claude visionu. Strogo ograničeno radi troška: filtar logotipa/ikona,
+  // granica veličine, broj po stranici i UKUPNI proračun po pokretanju.
+  ocrImagesEnabled: process.env.OCR_IMAGES !== '0',
+  ocrImageMaxBytes: int('OCR_IMAGE_MAX_BYTES', 5 * 1024 * 1024),
+  ocrImageMinDimension: int('OCR_IMAGE_MIN_DIM', 350), // min. width/height atribut (kad postoji)
+  ocrImageMaxPerPage: int('OCR_IMAGE_MAX_PER_PAGE', 4),
+  ocrImageMaxTotal: int('OCR_IMAGE_MAX_TOTAL', 60), // gornja granica novih slika po pokretanju
 
   lang: process.env.LANG_HR || process.env.LANG || 'hr',
 };

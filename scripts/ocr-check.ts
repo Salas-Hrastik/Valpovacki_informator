@@ -1,12 +1,14 @@
 /**
- * Brza provjera OCR-a nad JEDNIM PDF-om — BEZ baze i embeddinga.
- * Testira stvarnu putanju koda (fetchResource → extractFromPdf → ocrPdf),
- * pa je idealna za provjeru da OCR pročita npr. skenirani cjenik parkinga.
+ * Brza provjera OCR-a nad JEDNIM PDF-om ILI SLIKOM — BEZ baze i embeddinga.
+ * Testira stvarnu putanju koda (fetchResource → extractFromPdf/extractFromImage),
+ * pa je idealna za provjeru da OCR pročita npr. skenirani cjenik parkinga ili
+ * datum s plakata (slike) na naslovnici.
  *
- *   npx tsx scripts/ocr-check.ts "<URL-PDF-a>"
+ *   npx tsx scripts/ocr-check.ts "<URL-PDF-a-ili-slike>"
  *
- * Primjer (skenirani cjenik s urbanizam-valpovo.hr):
- *   npx tsx scripts/ocr-check.ts "https://urbanizam-valpovo.hr/wp-content/uploads/.../cjenik_compressed.pdf"
+ * Primjeri:
+ *   npx tsx scripts/ocr-check.ts "https://urbanizam-valpovo.hr/.../cjenik_compressed.pdf"
+ *   npx tsx scripts/ocr-check.ts "https://valpovo.hr/.../plakat-ljeto.jpg"
  *
  * Treba samo ANTHROPIC_API_KEY (iz okoline ili .env.local). Ako PDF ima
  * tekstualni sloj, OCR se NEĆE okinuti (i to je točno) — vidjet ćeš "OCR: ne".
@@ -31,7 +33,7 @@ loadEnvLocal();
 async function main(): Promise<void> {
   const url = process.argv[2];
   if (!url) {
-    console.error('Uporaba: npx tsx scripts/ocr-check.ts "<URL-PDF-a>"');
+    console.error('Uporaba: npx tsx scripts/ocr-check.ts "<URL-PDF-a-ili-slike>"');
     process.exit(2);
   }
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -40,7 +42,7 @@ async function main(): Promise<void> {
   }
 
   const { fetchResource } = await import('../lib/ingest/crawler');
-  const { extractFromPdf } = await import('../lib/ingest/extract');
+  const { extractFromPdf, extractFromImage } = await import('../lib/ingest/extract');
 
   console.log(`[ocr-check] Dohvaćam: ${url}`);
   const resource = await fetchResource(url);
@@ -48,18 +50,23 @@ async function main(): Promise<void> {
     console.error('[ocr-check] Resurs nije dohvaćen (ili je preskočen filtrom hostova/robots).');
     process.exit(1);
   }
-  if (resource.contentType !== 'pdf' || !resource.buffer) {
-    console.error(`[ocr-check] URL nije PDF (contentType=${resource.contentType}).`);
+  if ((resource.contentType !== 'pdf' && resource.contentType !== 'image') || !resource.buffer) {
+    console.error(`[ocr-check] URL nije PDF ni slika (contentType=${resource.contentType}).`);
     process.exit(1);
   }
 
-  console.log(`[ocr-check] Veličina PDF-a: ${(resource.buffer.byteLength / 1024).toFixed(0)} kB`);
-  const doc = await extractFromPdf(resource.buffer, url);
+  console.log(
+    `[ocr-check] Vrsta: ${resource.contentType} | veličina: ${(resource.buffer.byteLength / 1024).toFixed(0)} kB`,
+  );
+  const doc =
+    resource.contentType === 'pdf'
+      ? await extractFromPdf(resource.buffer, url)
+      : await extractFromImage(resource.buffer, resource.mediaType!, url);
 
   console.log('\n──────────── REZULTAT ────────────');
   console.log(`Naslov:   ${doc.title}`);
   console.log(`Datum:    ${doc.publishedAt ?? '(nema)'}`);
-  console.log(`OCR:      ${doc.ocr ? 'DA (skenirani PDF — tekst dobiven Claude OCR-om)' : 'ne (PDF je imao tekstualni sloj)'}`);
+  console.log(`OCR:      ${doc.ocr ? 'DA (tekst dobiven Claude OCR-om)' : 'ne (PDF je imao tekstualni sloj)'}`);
   console.log(`Znakova:  ${doc.text.length}`);
   console.log('──────────── TEKST (prvih 1500 znakova) ────────────\n');
   console.log(doc.text.slice(0, 1500));
