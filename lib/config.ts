@@ -130,6 +130,10 @@ export const config = {
   // INGEST_FORCE=1 preskače provjeru svježine (obradi SVE stranice ovaj prolaz) —
   // korisno za jednokratno otkrivanje svih PDF poveznica bez čekanja da stranice "ostare".
   ingestForce: process.env.INGEST_FORCE === '1',
+  // Najstarija godina koju ingestiramo za OTKRIVENE PDF/slika poveznice: dokumenti
+  // čija je najveća godina u URL-u manja od ove smatraju se arhivom i preskaču se
+  // (npr. plan nabave 2018, raspored odvoza 2015). URL-ovi bez godine se zadržavaju.
+  archiveMinYear: int('INGEST_MIN_YEAR', 2025),
   // Zaštita PDF-koraka: timeout za pdf-parse (CPU parsiranje nema vlastiti timeout
   // pa pokvaren/golem PDF može zaglaviti cijeli ingest) i gornja granica veličine.
   pdfParseTimeoutMs: int('PDF_PARSE_TIMEOUT_MS', 20_000),

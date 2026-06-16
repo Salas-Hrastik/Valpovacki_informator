@@ -97,7 +97,9 @@ async function main(): Promise<void> {
   }
 
   // 3) TEMELJITO: ponovno otkrij PDF/slika poveznice na stranicama i nađi praznine
-  const { gatherUrls, fetchResource, isAllowedHost, sleep } = await import('../lib/ingest/crawler');
+  const { gatherUrls, fetchResource, isAllowedHost, isOldArchiveUrl, sleep } = await import(
+    '../lib/ingest/crawler'
+  );
   const { extractPdfLinks, extractImageLinks } = await import('../lib/ingest/extract');
   const { config } = await import('../lib/config');
 
@@ -123,14 +125,31 @@ async function main(): Promise<void> {
   }
 
   const gaps = [...discovered].filter((u) => !storedSet.has(u));
-  const pdfGaps = gaps.filter(isPdf);
-  const imgGaps = gaps.filter(isImage);
+  // Razdvoji ARHIVU (stare godine — namjerno se preskaču) od AKTUALNIH praznina
+  // (one koje bi ingest trebao obraditi; tu je stvarni posao/eventualni problem).
+  const archiveGaps = gaps.filter((u) => isOldArchiveUrl(u));
+  const currentGaps = gaps.filter((u) => !isOldArchiveUrl(u));
+  const curPdf = currentGaps.filter(isPdf).length;
+  const curImg = currentGaps.filter(isImage).length;
+
+  const hostOf = (u: string): string => { try { return new URL(u).hostname; } catch { return '(nevažeći)'; } };
+  const byHost = new Map<string, number>();
+  for (const u of currentGaps) byHost.set(hostOf(u), (byHost.get(hostOf(u)) ?? 0) + 1);
 
   console.log('\n════════ PRAZNINE (otkriveno, ali NIJE u bazi) ════════');
-  console.log(`Otkriveno kandidata: ${discovered.size}  |  praznina: ${gaps.length}  (PDF: ${pdfGaps.length}, slike: ${imgGaps.length})`);
-  console.log('Vjerojatni uzroci: OCR vratio < 80 znakova, greška/timeout, preveliko, ili izvan proračuna/limita ovog prolaza.\n');
-  for (const u of [...pdfGaps, ...imgGaps].slice(0, 50)) console.log(`   ${u}`);
-  if (gaps.length > 50) console.log(`   … i još ${gaps.length - 50}`);
+  console.log(`Otkriveno kandidata: ${discovered.size}  |  praznina ukupno: ${gaps.length}`);
+  console.log(`  • ARHIVA (≤${config.archiveMinYear - 1}, namjerno se preskače): ${archiveGaps.length}`);
+  console.log(`  • AKTUALNO (za obradu): ${currentGaps.length}  (PDF: ${curPdf}, slike: ${curImg})`);
+  console.log('    Uzroci aktualnih: čeka rotaciju/proračun idućih prolaza, ili OCR pao/prazan/prevelik.');
+
+  console.log('\nAktualne praznine po hostu:');
+  for (const [host, n] of [...byHost.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`   ${String(n).padStart(5)}  ${host}`);
+  }
+
+  console.log('\nAktualne praznine (uzorak):');
+  for (const u of currentGaps.slice(0, 50)) console.log(`   ${u}`);
+  if (currentGaps.length > 50) console.log(`   … i još ${currentGaps.length - 50}`);
   console.log('\nSavjet: pojedinačno provjeri uzrok s  npm run ocr:check -- "<URL>"');
 }
 
