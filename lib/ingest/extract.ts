@@ -110,7 +110,11 @@ export async function extractFromImage(
       `ocr-image timeout (${config.pdfParseTimeoutMs} ms)`,
     ),
   );
-  return { title: fileNameFromUrl(url), text, publishedAt: null, ocr: true };
+  // Naslov iz sadržaja slike (npr. naziv događaja + datum s plakata) — korisniji
+  // za prikaz izvora i za dohvat nego ime datoteke; padamo na ime datoteke ako je
+  // pročitano premalo teksta.
+  const title = text.length >= 12 ? text.slice(0, 100).trim() : fileNameFromUrl(url);
+  return { title, text, publishedAt: null, ocr: true };
 }
 
 /** Odbacuje obećanje ako ne završi unutar zadanog vremena. */

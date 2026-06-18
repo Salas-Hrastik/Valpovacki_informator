@@ -179,7 +179,10 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number; o
 
       const chunks = chunkText(extracted.text);
       if (chunks.length === 0) return;
-      const vectors = await embedTexts(chunks.map((c) => c.text));
+      // Naslov dokumenta uključujemo u tekst za embedding (ne i u pohranjeni isječak):
+      // kratki isječci (npr. plakat s datumom) tako bolje pogađaju upit jer nose
+      // kontekst naslova/događaja. Standardna RAG praksa za poboljšanje dohvata.
+      const vectors = await embedTexts(chunks.map((c) => `${extracted.title}\n\n${c.text}`));
 
       const { error } = await sb.rpc('upsert_document_with_chunks', {
         p_doc: {
