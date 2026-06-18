@@ -211,6 +211,22 @@ async function main(): Promise<void> {
     await prune(process.argv.includes('--apply'));
     return;
   }
+  // Ciljani način: obradi SAMO zadane URL-ove (+ PDF/slike otkrivene na njima).
+  // Brzo ubacivanje pojedinih stranica/plakata bez punog prolaza, npr.:
+  //   npm run ingest -- --only "https://valpovo.hr/" "https://tz.valpovo.hr/"
+  if (process.argv.includes('--only')) {
+    const urls = process.argv.filter((a) => /^https?:\/\//i.test(a));
+    if (urls.length === 0) {
+      console.error('Uporaba: npm run ingest -- --only "<URL>" ["<URL2>" …]');
+      process.exit(2);
+    }
+    const { runIngest } = await import('../lib/ingest/pipeline');
+    const stats = await runIngest({ onlyUrls: urls });
+    if (stats.failedUrls.length > 0) {
+      console.warn('Neuspjeli URL-ovi:\n' + stats.failedUrls.join('\n'));
+    }
+    process.exit(stats.failed > 0 && stats.processed === 0 ? 1 : 0);
+  }
   const { runIngest } = await import('../lib/ingest/pipeline');
   const stats = await runIngest();
   if (stats.failedUrls.length > 0) {
