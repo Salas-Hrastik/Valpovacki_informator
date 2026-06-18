@@ -70,6 +70,8 @@ export default function Chat() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceModeRef = useRef(false);
   const transcriptRef = useRef('');
+  const busyRef = useRef(false);
+  const pendingRef = useRef('');
 
   // Provjera podrške za glasovni unos (samo u pregledniku).
   useEffect(() => {
@@ -106,6 +108,7 @@ export default function Chat() {
   const newConversation = () => {
     if (busy) return;
     voiceModeRef.current = false;
+    pendingRef.current = '';
     setVoiceMode(false);
     recognitionRef.current?.stop();
     setMessages([]);
@@ -204,11 +207,15 @@ export default function Chat() {
     }
   }, [input, busy, messages]);
 
-  // Najsvježija verzija send dostupna unutar callbackova prepoznavanja govora.
+  // Najsvježija verzija send + status zauzetosti dostupni unutar callbackova
+  // prepoznavanja govora (koji se izvršavaju izvan React render-ciklusa).
   const sendRef = useRef(send);
   useEffect(() => {
     sendRef.current = send;
   }, [send]);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   // Pokreni jedan ciklus slušanja. Po završetku govora (kratka stanka): ako je
   // nešto izgovoreno, pitanje se ŠALJE automatski; ako nije, ciklus se obnavlja
@@ -241,9 +248,14 @@ export default function Chat() {
       if (text) {
         setInput('');
         resetInputHeight();
-        void sendRef.current(text); // auto-slanje nakon stanke
+        if (busyRef.current) {
+          // Odgovor je još u tijeku — zapamti pitanje i pošalji ga čim završi.
+          pendingRef.current = text;
+        } else {
+          void sendRef.current(text); // auto-slanje nakon stanke
+        }
       }
-      // Ako nije izgovoreno ništa, efekt niže ponovno pokreće slušanje.
+      // Slušanje se obnavlja preko efekta niže (i tijekom odgovora i nakon njega).
     };
     rec.onerror = () => {
       recognitionRef.current = null;
@@ -258,15 +270,25 @@ export default function Chat() {
     }
   }, []);
 
-  // U glasovnom razgovoru: kad nismo zauzeti odgovorom i ne slušamo, ponovno
-  // pokreni slušanje (nakon odgovora ili nakon tišine). Stop gasi cijeli mod.
+  // U glasovnom razgovoru slušanje je KONTINUIRANO: kad ne slušamo, ponovno
+  // pokreni slušanje — i tijekom odgovora i nakon njega (te nakon tišine).
+  // Stop gasi cijeli mod.
   useEffect(() => {
-    if (!voiceMode || busy || listening || recognitionRef.current) return;
+    if (!voiceMode || listening || recognitionRef.current) return;
     const t = window.setTimeout(() => {
       if (voiceModeRef.current && !recognitionRef.current) startListening();
-    }, 600);
+    }, 500);
     return () => window.clearTimeout(t);
-  }, [voiceMode, busy, listening, startListening]);
+  }, [voiceMode, listening, startListening]);
+
+  // Kad odgovor završi (busy → false), pošalji pitanje koje je izgovoreno usred
+  // odgovora (čekalo je u redu).
+  useEffect(() => {
+    if (busy || !voiceMode || !pendingRef.current) return;
+    const q = pendingRef.current;
+    pendingRef.current = '';
+    void sendRef.current(q);
+  }, [busy, voiceMode]);
 
   const startVoiceMode = () => {
     if (busy) return;
@@ -276,6 +298,7 @@ export default function Chat() {
   };
   const stopVoiceMode = () => {
     voiceModeRef.current = false;
+    pendingRef.current = '';
     setVoiceMode(false);
     setListening(false);
     recognitionRef.current?.stop();
