@@ -25,6 +25,21 @@ const FRESH_DAYS = 5;
 const FRESH_MS = FRESH_DAYS * 24 * 60 * 60 * 1000;
 const PAGE = 1000;
 
+/**
+ * Procjenjuje "svježinu sadržaja" iz URL-a radi prioritizacije (veće = novije).
+ * Čita prvu godinu (i opcijski mjesec/dan) iz putanje — npr. /2026/06/11/… ili
+ * /wp-content/uploads/2026/02/…. URL-ovi BEZ godine tretiraju se kao AKTUALNI
+ * (dobivaju današnji datum) jer su to obično evergreen stranice (kontakt, usluge).
+ */
+function recencyScore(url: string, now: Date = new Date()): number {
+  const m = url.match(/\/(19|20)(\d{2})(?:\/(\d{1,2}))?(?:\/(\d{1,2}))?/);
+  if (!m) return now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate();
+  const year = parseInt(m[1] + m[2], 10);
+  const month = m[3] ? parseInt(m[3], 10) : 0;
+  const day = m[4] ? parseInt(m[4], 10) : 0;
+  return year * 372 + month * 31 + day;
+}
+
 export interface IngestStats {
   totalUrls: number;
   processed: number;
@@ -75,18 +90,30 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number; o
   }
   console.log(`[ingest] Učitano ${existingMap.size} postojećih dokumenata.`);
 
-  // Rotacijska obrada: "najstarije provjereni prvi". Sortiramo po fetched_at
-  // uzlazno; URL-ovi koji još nisu u bazi nemaju fetched_at pa dobivaju vrijeme 0
-  // i obrađuju se prije svih. Tek tada režemo na maxUrls — tako kroz uzastopne
-  // tjedne runde rotacijski obiđemo cijeli korpus bez "zaglavljivanja" na repu.
+  // Poredak obrade: "najnoviji sadržaj prvi" — građane najviše zanimaju AKTUALNI
+  // događaji, pa nove/recentne dokumente ingestiramo prije starijih, idući unatrag.
+  //  1) dokumenti kojih JOŠ NEMA u bazi imaju prednost (novi sadržaj),
+  //  2) među njima: noviji datum iz URL-a prvi (npr. /2026/06/… prije /2025/…;
+  //     stranice bez datuma tretiramo kao aktualne pa su pri vrhu),
+  //  3) među već postojećima: "najstarije provjereni prvi" (rotacija — da se kroz
+  //     uzastopne runde svi povremeno osvježe bez zaglavljivanja na repu).
+  // Tek tada režemo na maxUrls.
   const fetchedAtMs = (url: string): number => {
     const t = existingMap.get(url)?.fetchedAt;
     const ms = t ? new Date(t).getTime() : NaN;
     return Number.isFinite(ms) ? ms : 0;
   };
-  const urls = allUrls.sort((a, b) => fetchedAtMs(a) - fetchedAtMs(b)).slice(0, maxUrls);
+  const urls = allUrls
+    .sort((a, b) => {
+      const aNew = existingMap.has(a) ? 1 : 0;
+      const bNew = existingMap.has(b) ? 1 : 0;
+      if (aNew !== bNew) return aNew - bNew; // novi (0) prije postojećih (1)
+      if (aNew === 0) return recencyScore(b) - recencyScore(a); // novi: najnoviji sadržaj prvi
+      return fetchedAtMs(a) - fetchedAtMs(b); // postojeći: najstarije provjereni prvi (rotacija)
+    })
+    .slice(0, maxUrls);
   stats.totalUrls = urls.length;
-  console.log(`[ingest] Za obradu (najstarije provjereni prvi): ${urls.length} URL-ova.`);
+  console.log(`[ingest] Za obradu (najnoviji sadržaj prvi): ${urls.length} URL-ova.`);
 
   // PDF-ovi i slike otkriveni praćenjem poveznica na HTML stranicama (nisu u sitemapu).
   const discoveredPdfs = new Set<string>();
