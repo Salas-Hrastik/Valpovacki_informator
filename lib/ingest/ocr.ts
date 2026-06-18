@@ -21,10 +21,15 @@ const OCR_PROMPT =
   'čitljivog teksta, vrati prazan odgovor.';
 
 const OCR_IMAGE_PROMPT =
-  'Ovo je slika (npr. plakat ili banner). Prepiši TOČNO sav vidljivi tekst sa slike, ' +
-  'uključujući naslove, DATUME, vrijeme i mjesto održavanja, redom kako se pojavljuju. ' +
-  'NE dodaji komentare ni objašnjenja — vrati isključivo prepisani tekst. Ako na slici ' +
-  'nema čitljivog teksta, vrati prazan odgovor.';
+  'Ovo je slika (npr. plakat, banner ili obavijest). Zadatak ima dva dijela:\n' +
+  '1) Prepiši TOČNO sav vidljivi tekst sa slike, uključujući naslove, DATUME, ' +
+  'vrijeme i mjesto, redom kako se pojavljuju. Stilizirane ili logotipske znakove ' +
+  'tumači kao obične riječi (npr. "VALPO♥AČKO" → "VALPOVAČKO").\n' +
+  '2) Ako slika najavljuje događaj ili manifestaciju, na KRAJU dodaj jednu rečenicu ' +
+  'prirodnim jezikom u obliku: "Ovaj plakat najavljuje <naziv događaja>, koji se ' +
+  'održava <datum> u <mjesto>." (popuni iz vidljivih podataka; izostavi mjesto ako ' +
+  'nije vidljivo).\n' +
+  'Ne dodaji nikakve druge komentare. Ako na slici nema čitljivog teksta, vrati prazan odgovor.';
 
 /**
  * Šalje PDF Claudeu na OCR i vraća prepisani tekst (može biti prazan string
