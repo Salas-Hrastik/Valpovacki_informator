@@ -59,12 +59,19 @@ export default function Chat() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // Indeks poruke čiji je skočni prozor s izvorima trenutačno otvoren (ili null).
   const [sourcesIdx, setSourcesIdx] = useState<number | null>(null);
-  // Glasovni unos (Web Speech API): podržanost i je li snimanje u tijeku.
+  // Glasovni unos (Web Speech API): podržanost, je li snimanje u tijeku te
+  // "glasovni razgovor" (hands-free: nakon stanke se pitanje šalje samo, a nakon
+  // odgovora se ponovno sluša — dok korisnik ne zaustavi).
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [listening, setListening] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voiceModeRef = useRef(false);
+  const transcriptRef = useRef('');
+  const busyRef = useRef(false);
+  const pendingRef = useRef('');
 
   // Provjera podrške za glasovni unos (samo u pregledniku).
   useEffect(() => {
@@ -97,40 +104,12 @@ export default function Chat() {
     if (taRef.current) taRef.current.style.height = 'auto';
   };
 
-  // Glasovni unos: uključi/isključi snimanje. Prepoznati tekst upisuje u polje
-  // (govorom diktiraš pitanje, pa ga pošalješ tipkom/Enterom).
-  const toggleVoice = () => {
-    if (busy) return;
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-    const w = window as unknown as {
-      SpeechRecognition?: SpeechRecognitionCtor;
-      webkitSpeechRecognition?: SpeechRecognitionCtor;
-    };
-    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Ctor) return;
-    const rec = new Ctor();
-    rec.lang = 'hr-HR';
-    rec.interimResults = true;
-    rec.continuous = false;
-    rec.onresult = (event) => {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
-      setInput(text);
-      if (taRef.current) autoGrow(taRef.current);
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    recognitionRef.current = rec;
-    setListening(true);
-    rec.start();
-  };
-
   // Reset razgovora — praznimo poruke (dobrodošlica je stalno ispod naslova).
   const newConversation = () => {
     if (busy) return;
+    voiceModeRef.current = false;
+    pendingRef.current = '';
+    setVoiceMode(false);
     recognitionRef.current?.stop();
     setMessages([]);
     setInput('');
@@ -227,6 +206,104 @@ export default function Chat() {
       scrollDown();
     }
   }, [input, busy, messages]);
+
+  // Najsvježija verzija send + status zauzetosti dostupni unutar callbackova
+  // prepoznavanja govora (koji se izvršavaju izvan React render-ciklusa).
+  const sendRef = useRef(send);
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  // Pokreni jedan ciklus slušanja. Po završetku govora (kratka stanka): ako je
+  // nešto izgovoreno, pitanje se ŠALJE automatski; ako nije, ciklus se obnavlja
+  // (preko efekta niže) dok je glasovni razgovor uključen.
+  const startListening = useCallback(() => {
+    if (recognitionRef.current) return;
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    transcriptRef.current = '';
+    const rec = new Ctor();
+    rec.lang = 'hr-HR';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (event) => {
+      let text = '';
+      for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
+      transcriptRef.current = text;
+      setInput(text);
+      if (taRef.current) autoGrow(taRef.current);
+    };
+    rec.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+      if (!voiceModeRef.current) return;
+      const text = transcriptRef.current.trim();
+      if (text) {
+        setInput('');
+        resetInputHeight();
+        if (busyRef.current) {
+          // Odgovor je još u tijeku — zapamti pitanje i pošalji ga čim završi.
+          pendingRef.current = text;
+        } else {
+          void sendRef.current(text); // auto-slanje nakon stanke
+        }
+      }
+      // Slušanje se obnavlja preko efekta niže (i tijekom odgovora i nakon njega).
+    };
+    rec.onerror = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    recognitionRef.current = rec;
+    setListening(true);
+    try {
+      rec.start();
+    } catch {
+      /* već pokrenut — zanemari */
+    }
+  }, []);
+
+  // U glasovnom razgovoru slušanje je KONTINUIRANO: kad ne slušamo, ponovno
+  // pokreni slušanje — i tijekom odgovora i nakon njega (te nakon tišine).
+  // Stop gasi cijeli mod.
+  useEffect(() => {
+    if (!voiceMode || listening || recognitionRef.current) return;
+    const t = window.setTimeout(() => {
+      if (voiceModeRef.current && !recognitionRef.current) startListening();
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [voiceMode, listening, startListening]);
+
+  // Kad odgovor završi (busy → false), pošalji pitanje koje je izgovoreno usred
+  // odgovora (čekalo je u redu).
+  useEffect(() => {
+    if (busy || !voiceMode || !pendingRef.current) return;
+    const q = pendingRef.current;
+    pendingRef.current = '';
+    void sendRef.current(q);
+  }, [busy, voiceMode]);
+
+  const startVoiceMode = () => {
+    if (busy) return;
+    voiceModeRef.current = true;
+    setVoiceMode(true);
+    startListening();
+  };
+  const stopVoiceMode = () => {
+    voiceModeRef.current = false;
+    pendingRef.current = '';
+    setVoiceMode(false);
+    setListening(false);
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+  };
 
   return (
     <div className="chat" aria-busy={busy}>
@@ -334,17 +411,29 @@ export default function Chat() {
           aria-label="Vaše pitanje"
         />
         {voiceSupported && (
-          <button
-            type="button"
-            className={`chat-mic${listening ? ' listening' : ''}`}
-            onClick={toggleVoice}
-            disabled={busy}
-            aria-pressed={listening}
-            aria-label={listening ? 'Zaustavi snimanje' : 'Postavi pitanje glasom'}
-            title={listening ? 'Zaustavi snimanje' : 'Postavi pitanje glasom'}
-          >
-            🎤
-          </button>
+          voiceMode ? (
+            <button
+              type="button"
+              className="chat-mic listening"
+              onClick={stopVoiceMode}
+              aria-pressed={true}
+              aria-label="Završi glasovni razgovor"
+              title="Završi glasovni razgovor"
+            >
+              ⏹
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="chat-mic"
+              onClick={startVoiceMode}
+              disabled={busy}
+              aria-label="Pokreni glasovni razgovor"
+              title="Pokreni glasovni razgovor"
+            >
+              🎤
+            </button>
+          )
         )}
         <button type="submit" disabled={busy || !input.trim()}>
           Pošalji
