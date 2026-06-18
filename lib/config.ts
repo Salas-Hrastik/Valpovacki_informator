@@ -115,7 +115,7 @@ export const config = {
   // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
   // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika).
   ragRerank: process.env.RAG_RERANK !== '0',
-  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 24),
+  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 48),
   rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),

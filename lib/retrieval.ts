@@ -56,7 +56,7 @@ export async function retrieve(
   if (config.ragFtsFallback) {
     const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
       query_text: lexicalQuery(query),
-      match_count: topK,
+      match_count: poolSize,
     });
     if (!ftsErr && ftsRows) {
       const vecIds = new Set(vec.map((r) => r.chunk_id));
