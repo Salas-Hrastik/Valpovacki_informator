@@ -15,12 +15,13 @@ export default function HomePage() {
         />
         <h1>Valpovački AI gradski informator</h1>
         <p>
-          Dobro došli! Ovaj servis nastojanje je Gradske uprave i gradonačelnika Grada Valpova
-          da građane što pravodobnije i kvalitetnije informiraju o svim pitanjima od interesa
-          za žitelje Valpova i prigradskih naselja. Slobodno postavite pitanje o uslugama
-          gradske uprave, natječajima, komunalnim temama, ustanovama i događanjima.
+          Dobro došli! Ovaj servis na tragu je nastojanja Gradske uprave i gradonačelnika
+          Grada Valpova da građane što pravodobnije i kvalitetnije informiraju o svim pitanjima
+          od njihovog interesa. Slobodno postavite pitanje o uslugama gradske uprave,
+          natječajima, komunalnim temama, ustanovama i događanjima. Vaše sugestije bit će nam
+          dragocjene u unapređenju AI informatora!
         </p>
-        <p className="page-signature">Vaš gradonačelnik Matko</p>
+        <p className="page-signature">Vaš gradonačelnik Matko.</p>
       </header>
       <Chat />
     </main>
