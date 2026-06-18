@@ -1,10 +1,15 @@
-/* Valpovački AI gradski informator — minimalni, pristupačni stilovi */
+/* Valpovački AI gradski informator — minimalni, pristupačni stilovi.
+   Paleta: valpovska zelena (#014128) u nijansama. */
 :root {
-  --boja-primarna: #1f4e79;   /* tamnoplava — institucionalni ton */
-  --boja-pozadina: #f5f6f8;
+  --boja-primarna: #014128;        /* glavna — valpovska tamnozelena */
+  --boja-primarna-tamna: #002e1b;  /* tamnija — hover/aktivno na punim gumbima */
+  --boja-primarna-svijetla: #0a5a38;/* svjetlija — akcenti, hover */
+  --boja-pozadina: #eef3f0;        /* stranica — vrlo blaga zelenkasta */
+  --boja-pozadina-blago: #e3ede7;  /* kartice/baloni/zaglavlja tablica — blagi zeleni ton */
   --boja-bijela: #ffffff;
-  --boja-tekst: #1c1c1c;
-  --boja-rub: #d8dce2;
+  --boja-tekst: #16201b;           /* gotovo crna sa zelenim tonom */
+  --boja-tekst-prigusen: #51635b;  /* sekundarni tekst (datumi, napomene) */
+  --boja-rub: #cdd9d2;             /* rubovi — zelenkasti */
 }
 
 * { box-sizing: border-box; }
@@ -28,7 +33,7 @@ body {
 .page-widget { padding: 8px; min-height: 100vh; }
 
 .page-header h1 { margin: 0 0 8px; font-size: 1.5rem; color: var(--boja-primarna); }
-.page-header p { margin: 0 0 16px; color: #444; }
+.page-header p { margin: 0 0 16px; color: var(--boja-tekst-prigusen); }
 
 .chat {
   display: flex;
@@ -61,7 +66,7 @@ body {
   justify-content: flex-end;
   padding: 8px 12px;
   border-bottom: 1px solid var(--boja-rub);
-  background: #fafbfc;
+  background: var(--boja-pozadina-blago);
 }
 .chat-reset {
   background: transparent;
@@ -71,8 +76,9 @@ body {
   padding: 4px 12px;
   font-size: 0.82rem;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
-.chat-reset:hover:not(:disabled) { background: #eef1f5; }
+.chat-reset:hover:not(:disabled) { background: var(--boja-primarna); color: #fff; border-color: var(--boja-primarna); }
 .chat-reset:disabled { opacity: 0.5; cursor: default; }
 
 /* Brzi prijedlozi pitanja (chips) */
@@ -89,13 +95,14 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 .chip:hover { background: var(--boja-primarna); color: #fff; }
+.chip:active { background: var(--boja-primarna-tamna); }
 
 /* Gumb "Kopiraj odgovor" unutar odgovora asistenta */
 .msg-copy {
   margin-top: 8px;
   background: transparent;
   border: none;
-  color: #56708a;
+  color: var(--boja-tekst-prigusen);
   font-size: 0.78rem;
   padding: 2px 0;
   cursor: pointer;
@@ -111,7 +118,7 @@ body {
 }
 
 .msg-user .msg-bubble { background: var(--boja-primarna); color: #fff; border-bottom-right-radius: 4px; }
-.msg-assistant .msg-bubble { background: #eef1f5; border-bottom-left-radius: 4px; }
+.msg-assistant .msg-bubble { background: var(--boja-pozadina-blago); border-bottom-left-radius: 4px; }
 
 /* Renderirani Markdown unutar odgovora: uredni razmaci između blok-elemenata. */
 .msg-text { white-space: normal; }
@@ -140,7 +147,7 @@ body {
 .msg-text thead th { background: var(--boja-pozadina-blago, #f3f4f6); font-weight: 600; }
 .msg-text tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.025); }
 
-.msg-source-date { color: #666; }
+.msg-source-date { color: var(--boja-tekst-prigusen); }
 
 /* Gumb "Izvori (N)" — otvara skočni prozor s popisom izvora */
 .msg-sources-btn {
@@ -187,7 +194,7 @@ body {
   border: none;
   font-size: 1.1rem;
   line-height: 1;
-  color: #666;
+  color: var(--boja-tekst-prigusen);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 6px;
@@ -219,7 +226,7 @@ body {
 .chat-input textarea:focus {
   outline: none;
   border-color: var(--boja-primarna);
-  box-shadow: 0 0 0 2px rgba(31, 78, 121, 0.15);
+  box-shadow: 0 0 0 2px rgba(1, 65, 40, 0.18);
 }
 
 .chat-input button {
@@ -231,7 +238,9 @@ body {
   font-size: 1rem;
   cursor: pointer;
   align-self: flex-end;
+  transition: background 0.15s;
 }
+.chat-input button:hover:not(:disabled) { background: var(--boja-primarna-tamna); }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
 
 /* Animirani indikator "asistent piše" (tri točke) */
@@ -260,7 +269,7 @@ body {
   margin: 0;
   padding: 8px 12px 12px;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--boja-tekst-prigusen);
 }
 
 /* Pristupačnost: jasan fokus-obrub za korisnike tipkovnice */

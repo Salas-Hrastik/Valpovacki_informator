@@ -22,7 +22,7 @@
   button.textContent = '💬 Pitajte Grad';
   button.style.cssText =
     'position:fixed;right:20px;bottom:20px;z-index:99998;padding:12px 18px;' +
-    'background:#1f4e79;color:#fff;border:none;border-radius:24px;font-size:15px;' +
+    'background:#014128;color:#fff;border:none;border-radius:24px;font-size:15px;' +
     'font-family:system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);';
 
   var frame = document.createElement('iframe');
@@ -30,7 +30,7 @@
   frame.title = 'Valpovački AI gradski informator';
   frame.style.cssText =
     'position:fixed;right:20px;bottom:76px;z-index:99999;width:380px;height:560px;' +
-    'max-width:calc(100vw - 40px);max-height:calc(100vh - 100px);border:1px solid #d8dce2;' +
+    'max-width:calc(100vw - 40px);max-height:calc(100vh - 100px);border:1px solid #cdd9d2;' +
     'border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;background:#fff;';
 
   button.addEventListener('click', function () {
