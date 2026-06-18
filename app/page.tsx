@@ -21,7 +21,7 @@ export default function HomePage() {
           natječajima, komunalnim temama, ustanovama i događanjima. Vaše sugestije bit će nam
           dragocjene u unapređenju AI informatora!
         </p>
-        <p className="page-signature">Vaš gradonačelnik Matko.</p>
+        <p className="page-signature">Vaš gradonačelnik Matko</p>
       </header>
       <Chat />
     </main>
