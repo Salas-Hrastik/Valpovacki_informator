@@ -38,10 +38,13 @@ export interface IngestStats {
   durationMs: number;
 }
 
-export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } = {}): Promise<IngestStats> {
+export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number; onlyUrls?: string[] } = {}): Promise<IngestStats> {
   const startedAt = Date.now();
   const deadline = opts.deadlineMs ? startedAt + opts.deadlineMs : Infinity;
   const maxUrls = opts.maxUrls ?? config.ingestMaxUrls;
+  // Ciljani način: kad su zadani onlyUrls, obrađujemo samo njih (+ PDF/slike koje
+  // otkrijemo na tim stranicama) i tjeramo obradu (zaobilazimo provjeru svježine).
+  const force = config.ingestForce || (opts.onlyUrls?.length ?? 0) > 0;
 
   const sb = supabaseAdmin();
   const stats: IngestStats = {
@@ -49,8 +52,12 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
     unchanged: 0, skippedFresh: 0, failed: 0, ocrUsed: 0, failedUrls: [], durationMs: 0,
   };
 
-  const allUrls = await gatherUrls();
-  console.log(`[ingest] Pronađeno ${allUrls.length} URL-ova iz sitemapova/seedova.`);
+  const allUrls = opts.onlyUrls ?? await gatherUrls();
+  console.log(
+    opts.onlyUrls
+      ? `[ingest] Ciljani način: ${allUrls.length} zadanih URL-ova.`
+      : `[ingest] Pronađeno ${allUrls.length} URL-ova iz sitemapova/seedova.`,
+  );
 
   // Učitaj SVE postojeće dokumente u stranicama po 1000 (obilazi Supabase limit)
   const existingMap = new Map<string, { hash: string; fetchedAt: string }>();
@@ -88,7 +95,7 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
 
   // Je li dokument provjeren nedavno (pa ga preskačemo)? Koristi se za proračun OCR-a slika.
   const isFresh = (u: string): boolean => {
-    if (config.ingestForce) return false;
+    if (force) return false;
     const p = existingMap.get(u);
     return !!(p && p.fetchedAt && Date.now() - new Date(p.fetchedAt).getTime() < FRESH_MS);
   };
@@ -99,7 +106,7 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number } 
 
     const prev = existingMap.get(url);
     if (
-      !config.ingestForce &&
+      !force &&
       prev && prev.fetchedAt &&
       Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS
     ) {
