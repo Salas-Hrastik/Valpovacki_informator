@@ -52,6 +52,35 @@ function formatDateHr(iso: string): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}.`;
 }
 
+// Markdown → čisti tekst za izgovor (bez #, *, `, poveznica, tablica…).
+function toSpeech(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // poveznice → samo tekst
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/[*_~>#|]/g, ' ')
+    .replace(/^\s*[-+]\s+/gm, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Odabir ugodnog ŽENSKOG glasa — prednost hrvatskom, pa poznatim ženskim glasovima.
+function chooseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+  const female = /female|žensk|woman|zira|jelena|lana|gabrijela|matea|petra|google hrvatski|samantha|tessa|serena|amelie|google uk english female/i;
+  const male = /male|mušk|man|matej|david|mark|google.*male/i;
+  const hr = voices.filter((v) => /^hr/i.test(v.lang));
+  return (
+    hr.find((v) => female.test(v.name)) ||
+    hr.find((v) => !male.test(v.name)) ||
+    hr[0] ||
+    voices.find((v) => female.test(v.name)) ||
+    null
+  );
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -65,6 +94,7 @@ export default function Chat() {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -72,6 +102,10 @@ export default function Chat() {
   const transcriptRef = useRef('');
   const busyRef = useRef(false);
   const pendingRef = useRef('');
+  const speakingRef = useRef(false);
+  const ttsVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const lastSpokenRef = useRef('');
 
   // Provjera podrške za glasovni unos (samo u pregledniku).
   useEffect(() => {
@@ -81,6 +115,25 @@ export default function Chat() {
     };
     setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
   }, []);
+
+  // Učitavanje i odabir ženskog glasa za izgovor (lista glasova stiže asinkrono).
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const pick = () => {
+      ttsVoiceRef.current = chooseVoice(window.speechSynthesis.getVoices());
+    };
+    pick();
+    window.speechSynthesis.onvoiceschanged = pick;
+    return () => {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  // Najsvježija lista poruka dostupna izvan render-ciklusa (za izgovor odgovora).
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Zatvaranje skočnog prozora s izvorima tipkom Esc.
   useEffect(() => {
@@ -109,8 +162,12 @@ export default function Chat() {
     if (busy) return;
     voiceModeRef.current = false;
     pendingRef.current = '';
+    lastSpokenRef.current = '';
     setVoiceMode(false);
     recognitionRef.current?.stop();
+    if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    speakingRef.current = false;
+    setSpeaking(false);
     setMessages([]);
     setInput('');
     resetInputHeight();
@@ -270,25 +327,62 @@ export default function Chat() {
     }
   }, []);
 
-  // U glasovnom razgovoru slušanje je KONTINUIRANO: kad ne slušamo, ponovno
-  // pokreni slušanje — i tijekom odgovora i nakon njega (te nakon tišine).
-  // Stop gasi cijeli mod.
+  // Izgovori tekst odgovora ženskim glasom (samo tekst, bez izvora). Dok bot
+  // govori, mikrofon je pauziran (da se ne čuje sam); po završetku se slušanje
+  // automatski nastavlja (preko efekta niže).
+  const speak = useCallback((text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const clean = toSpeech(text);
+    if (!clean) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    recognitionRef.current?.stop();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'hr-HR';
+    if (ttsVoiceRef.current) u.voice = ttsVoiceRef.current;
+    u.rate = 1;
+    u.pitch = 1.05; // malo topliji, ugodniji ton
+    u.onstart = () => {
+      speakingRef.current = true;
+      setSpeaking(true);
+    };
+    const done = () => {
+      speakingRef.current = false;
+      setSpeaking(false);
+    };
+    u.onend = done;
+    u.onerror = done;
+    synth.speak(u);
+  }, []);
+
+  // U glasovnom razgovoru slušanje je KONTINUIRANO, ALI pauzira dok bot GOVORI
+  // (da mikrofon ne čuje sam sebe). Kad ne slušamo i bot ne govori, ponovno
+  // pokreni slušanje. Stop gasi cijeli mod.
   useEffect(() => {
-    if (!voiceMode || listening || recognitionRef.current) return;
+    if (!voiceMode || listening || speaking || recognitionRef.current) return;
     const t = window.setTimeout(() => {
-      if (voiceModeRef.current && !recognitionRef.current) startListening();
+      if (voiceModeRef.current && !speakingRef.current && !recognitionRef.current) startListening();
     }, 500);
     return () => window.clearTimeout(t);
-  }, [voiceMode, listening, startListening]);
+  }, [voiceMode, listening, speaking, startListening]);
 
-  // Kad odgovor završi (busy → false), pošalji pitanje koje je izgovoreno usred
-  // odgovora (čekalo je u redu).
+  // Kad odgovor završi (busy → false): pošalji pitanje iz reda (izgovoreno usred
+  // odgovora), inače pročitaj zadnji odgovor naglas (samo tekst, bez izvora).
   useEffect(() => {
-    if (busy || !voiceMode || !pendingRef.current) return;
-    const q = pendingRef.current;
-    pendingRef.current = '';
-    void sendRef.current(q);
-  }, [busy, voiceMode]);
+    if (busy || !voiceMode) return;
+    if (pendingRef.current) {
+      const q = pendingRef.current;
+      pendingRef.current = '';
+      void sendRef.current(q);
+      return;
+    }
+    const list = messagesRef.current;
+    const last = list[list.length - 1];
+    if (last && last.role === 'assistant' && last.content && lastSpokenRef.current !== last.content) {
+      lastSpokenRef.current = last.content;
+      speak(last.content);
+    }
+  }, [busy, voiceMode, speak]);
 
   const startVoiceMode = () => {
     if (busy) return;
@@ -303,6 +397,9 @@ export default function Chat() {
     setListening(false);
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    speakingRef.current = false;
+    setSpeaking(false);
   };
 
   return (
