@@ -22,14 +22,29 @@ interface Message {
 }
 
 // Brzi prijedlozi pitanja — prikazuju se na početku da građanin odmah vidi
-// što može pitati. Klik šalje pitanje izravno.
+// što može pitati. Klik šalje pitanje izravno. Odabrane su teme od najšireg
+// interesa za građane Valpova i prigradskih naselja.
 const PRIJEDLOZI = [
-  'Koje je radno vrijeme gradske uprave?',
+  'Kada se održava Ljeto valpovačko?',
   'Koji su aktualni natječaji i javni pozivi?',
+  'Koje je radno vrijeme gradske uprave?',
+  'Gdje i koliko se plaća parkiranje?',
   'Kako platiti komunalnu naknadu?',
   'Kako se prijaviti za dječji vrtić?',
-  'Kako predati zahtjev za pristup informacijama?',
 ];
+
+// Minimalni tip za Web Speech API (nije u standardnim TS lib tipovima).
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
 function formatDateHr(iso: string): string {
   const d = new Date(iso);
@@ -44,8 +59,21 @@ export default function Chat() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // Indeks poruke čiji je skočni prozor s izvorima trenutačno otvoren (ili null).
   const [sourcesIdx, setSourcesIdx] = useState<number | null>(null);
+  // Glasovni unos (Web Speech API): podržanost i je li snimanje u tijeku.
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [listening, setListening] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // Provjera podrške za glasovni unos (samo u pregledniku).
+  useEffect(() => {
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
 
   // Zatvaranje skočnog prozora s izvorima tipkom Esc.
   useEffect(() => {
@@ -69,9 +97,41 @@ export default function Chat() {
     if (taRef.current) taRef.current.style.height = 'auto';
   };
 
+  // Glasovni unos: uključi/isključi snimanje. Prepoznati tekst upisuje u polje
+  // (govorom diktiraš pitanje, pa ga pošalješ tipkom/Enterom).
+  const toggleVoice = () => {
+    if (busy) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = 'hr-HR';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (event) => {
+      let text = '';
+      for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
+      setInput(text);
+      if (taRef.current) autoGrow(taRef.current);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
+
   // Reset razgovora — praznimo poruke (dobrodošlica je stalno ispod naslova).
   const newConversation = () => {
     if (busy) return;
+    recognitionRef.current?.stop();
     setMessages([]);
     setInput('');
     resetInputHeight();
@@ -268,11 +328,24 @@ export default function Chat() {
               void send();
             }
           }}
-          placeholder="Postavite pitanje o Gradu Valpovu…"
+          placeholder={listening ? 'Slušam… izgovorite pitanje' : 'Postavite pitanje o Gradu Valpovu…'}
           maxLength={2000}
           disabled={busy}
           aria-label="Vaše pitanje"
         />
+        {voiceSupported && (
+          <button
+            type="button"
+            className={`chat-mic${listening ? ' listening' : ''}`}
+            onClick={toggleVoice}
+            disabled={busy}
+            aria-pressed={listening}
+            aria-label={listening ? 'Zaustavi snimanje' : 'Postavi pitanje glasom'}
+            title={listening ? 'Zaustavi snimanje' : 'Postavi pitanje glasom'}
+          >
+            🎤
+          </button>
+        )}
         <button type="submit" disabled={busy || !input.trim()}>
           Pošalji
         </button>
