@@ -10,8 +10,8 @@ export default function HomePage() {
           src="/grb-valpovo.svg"
           alt="Grad Valpovo — City of Valpovo"
           className="page-logo"
-          width={452}
-          height={120}
+          width={816}
+          height={235}
         />
         <h1>Valpovački AI gradski informator</h1>
         <p>
