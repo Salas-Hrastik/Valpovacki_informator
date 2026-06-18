@@ -42,7 +42,7 @@ interface SpeechRecognitionLike {
   stop: () => void;
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
@@ -104,6 +104,7 @@ export default function Chat() {
   const pendingRef = useRef('');
   const speakingRef = useRef(false);
   const ttsVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const ttsKeepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const lastSpokenRef = useRef('');
 
@@ -314,9 +315,16 @@ export default function Chat() {
       }
       // Slušanje se obnavlja preko efekta niže (i tijekom odgovora i nakon njega).
     };
-    rec.onerror = () => {
+    rec.onerror = (event) => {
       recognitionRef.current = null;
       setListening(false);
+      const err = event?.error;
+      // Fatalne greške (nema dopuštenja/mikrofona) — ugasi mod da ne vrti u krug.
+      if (err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture') {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+      }
+      // 'no-speech'/'aborted' su normalni — efekt niže opet pokrene slušanje.
     };
     recognitionRef.current = rec;
     setListening(true);
@@ -335,23 +343,45 @@ export default function Chat() {
     const clean = toSpeech(text);
     if (!clean) return;
     const synth = window.speechSynthesis;
+    recognitionRef.current?.stop(); // mikrofon off dok bot govori
     synth.cancel();
-    recognitionRef.current?.stop();
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = 'hr-HR';
     if (ttsVoiceRef.current) u.voice = ttsVoiceRef.current;
     u.rate = 1;
     u.pitch = 1.05; // malo topliji, ugodniji ton
+    const clearKeepAlive = () => {
+      if (ttsKeepAliveRef.current) {
+        clearInterval(ttsKeepAliveRef.current);
+        ttsKeepAliveRef.current = null;
+      }
+    };
     u.onstart = () => {
       speakingRef.current = true;
       setSpeaking(true);
+      // Chrome zaustavi govor nakon ~15 s — periodični resume to sprječava.
+      clearKeepAlive();
+      ttsKeepAliveRef.current = setInterval(() => {
+        try {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } catch {
+          /* ignoriraj */
+        }
+      }, 10000);
     };
     const done = () => {
+      clearKeepAlive();
       speakingRef.current = false;
       setSpeaking(false);
     };
     u.onend = done;
     u.onerror = done;
+    try {
+      synth.resume(); // ako je u pauziranom stanju
+    } catch {
+      /* ignoriraj */
+    }
     synth.speak(u);
   }, []);
 
@@ -386,6 +416,22 @@ export default function Chat() {
 
   const startVoiceMode = () => {
     if (busy) return;
+    // KLJUČNO: "otključaj" izgovor unutar korisničkog klika — inače preglednici
+    // (osobito mobilni) blokiraju kasniji programski speechSynthesis.speak().
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        const s = window.speechSynthesis;
+        s.cancel();
+        s.resume();
+        const warm = new SpeechSynthesisUtterance(' ');
+        warm.volume = 0;
+        s.speak(warm);
+        // osvježi listu glasova (ponekad je dostupna tek nakon interakcije)
+        ttsVoiceRef.current = chooseVoice(s.getVoices());
+      } catch {
+        /* ignoriraj */
+      }
+    }
     voiceModeRef.current = true;
     setVoiceMode(true);
     startListening();
@@ -398,6 +444,10 @@ export default function Chat() {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    if (ttsKeepAliveRef.current) {
+      clearInterval(ttsKeepAliveRef.current);
+      ttsKeepAliveRef.current = null;
+    }
     speakingRef.current = false;
     setSpeaking(false);
   };
