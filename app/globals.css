@@ -222,6 +222,7 @@ body {
 
 .chat-input {
   display: flex;
+  align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--boja-rub);
@@ -229,6 +230,7 @@ body {
 
 .chat-input textarea {
   flex: 1;
+  min-width: 0; /* dopušta skupljanje na uskim ekranima (bez prelijevanja) */
   padding: 10px 12px;
   border: 1px solid var(--boja-rub);
   border-radius: 8px;
@@ -254,6 +256,7 @@ body {
   font-size: 1rem;
   cursor: pointer;
   align-self: flex-end;
+  flex-shrink: 0; /* gumbi zadržavaju veličinu; skuplja se polje za unos */
   transition: background 0.15s;
 }
 .chat-input button:hover:not(:disabled) { background: var(--boja-primarna-tamna); }
@@ -330,12 +333,18 @@ textarea:focus-visible {
   .chat-messages { padding: 12px; }
   .msg-bubble { max-width: 92%; }
 
-  .chat-input { padding: 10px; gap: 6px; }
+  .chat-input { padding: 8px; gap: 6px; }
   .chat-input textarea { font-size: 16px; } /* 16px sprječava zoom na iOS-u */
-  .chat-input button { padding: 10px 14px; }
-  .chat-input .chat-mic { padding: 9px 11px; }
+  .chat-input button { padding: 10px 12px; font-size: 0.95rem; }
+  .chat-input .chat-mic { padding: 9px 10px; }
 
   .chip { font-size: 0.82rem; padding: 7px 11px; } /* dovoljno velik tap-cilj */
+}
+
+/* Vrlo uski telefoni: dodatno skupi gumbe da unos ostane upotrebljiv */
+@media (max-width: 360px) {
+  .chat-input { gap: 5px; }
+  .chat-input button { padding: 9px 10px; font-size: 0.9rem; }
 }
 
 /* Embed widget: bez vanjskog razmaka, puna visina iframea */
