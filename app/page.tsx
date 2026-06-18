@@ -4,14 +4,14 @@ export default function HomePage() {
   return (
     <main className="page">
       <header className="page-header">
-        {/* Statična SVG ikona grba — next/image nije potreban; eslint-disable za <img>. */}
+        {/* Statična SVG ikona logotipa — next/image nije potreban; eslint-disable za <img>. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/grb-valpovo.svg"
-          alt="Grb Grada Valpova"
+          alt="Grad Valpovo — City of Valpovo"
           className="page-logo"
-          width={60}
-          height={72}
+          width={452}
+          height={120}
         />
         <h1>Valpovački AI gradski informator</h1>
         <p>
