@@ -330,6 +330,14 @@ body {
   color: var(--boja-tekst-prigusen);
 }
 
+/* Poruka kad glasovni unos ne radi */
+.voice-err {
+  margin: 0;
+  padding: 6px 12px 0;
+  font-size: 0.78rem;
+  color: #b3261e;
+}
+
 /* Pristupačnost: jasan fokus-obrub za korisnike tipkovnice */
 a:focus-visible,
 button:focus-visible,

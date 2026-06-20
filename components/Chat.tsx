@@ -96,6 +96,7 @@ export default function Chat() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [useRecorder, setUseRecorder] = useState(false); // iOS: snimanje umjesto Web Speech
+  const [voiceErr, setVoiceErr] = useState(''); // vidljiva poruka kad glas ne radi
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -131,9 +132,16 @@ export default function Chat() {
       typeof MediaRecorder !== 'undefined' &&
       !!navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === 'function';
-    useRecorderRef.current = !webSpeech && recorder;
-    setUseRecorder(!webSpeech && recorder);
-    setVoiceSupported(webSpeech || recorder);
+    // iOS Safari ZNA prijaviti webkitSpeechRecognition koji ne radi — zato na
+    // iOS-u (ako je dostupno snimanje) UVIJEK biramo snimanje + /api/transcribe.
+    const ua = navigator.userAgent || '';
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const preferRecorder = recorder && (isIOS || !webSpeech);
+    useRecorderRef.current = preferRecorder;
+    setUseRecorder(preferRecorder);
+    setVoiceSupported(preferRecorder || webSpeech);
   }, []);
 
   // Učitavanje i odabir ženskog glasa za izgovor (lista glasova stiže asinkrono).
@@ -480,6 +488,7 @@ export default function Chat() {
       voiceModeRef.current = false; // dopuštenje odbijeno / nema mikrofona
       setVoiceMode(false);
       setListening(false);
+      setVoiceErr('Nije moguće pristupiti mikrofonu. Dopustite pristup mikrofonu u postavkama preglednika.');
       return;
     }
     if (!voiceModeRef.current) {
@@ -496,6 +505,7 @@ export default function Chat() {
       voiceModeRef.current = false;
       setVoiceMode(false);
       setListening(false);
+      setVoiceErr('Snimanje zvuka nije podržano na ovom pregledniku.');
       return;
     }
     mediaRecorderRef.current = mr;
@@ -518,14 +528,19 @@ export default function Chat() {
         const data = (await r.json().catch(() => ({}))) as { text?: string };
         const text = (data.text || '').trim();
         setListening(false);
-        if (text && voiceModeRef.current) {
+        if (!r.ok) {
+          setVoiceErr('Prijepis govora trenutačno nije moguć. Pokušajte ponovno.');
+        } else if (text && voiceModeRef.current) {
           setInput('');
           resetInputHeight();
           if (busyRef.current) pendingRef.current = text;
           else void sendRef.current(text);
+        } else if (!text) {
+          setVoiceErr('Nisam razabrala govor. Pokušajte ponovno, bliže mikrofonu.');
         }
       } catch {
         setListening(false);
+        setVoiceErr('Prijepis govora trenutačno nije moguć. Pokušajte ponovno.');
       }
     };
 
@@ -611,6 +626,7 @@ export default function Chat() {
 
   const startVoiceMode = () => {
     if (busy) return;
+    setVoiceErr('');
     // KLJUČNO: "otključaj" izgovor unutar korisničkog klika — inače preglednici
     // (osobito mobilni) blokiraju kasniji programski speechSynthesis.speak().
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -805,6 +821,12 @@ export default function Chat() {
           Pošalji
         </button>
       </form>
+
+      {voiceErr && (
+        <p className="voice-err" role="status">
+          {voiceErr}
+        </p>
+      )}
 
       <p className="chat-disclaimer">
         Odgovore generira umjetna inteligencija na temelju javno dostupnih službenih izvora i mogu
