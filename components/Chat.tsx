@@ -59,12 +59,26 @@ function toSpeech(md: string): string {
     .replace(/`([^`]*)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // poveznice → samo tekst
+    // Izbaci "— provjereno: DD.MM.GGGG." (citati izvora — nepotrebno za izgovor)
+    .replace(/[—–-]?\s*\(?provjereno:?\s*\d{1,2}\.\s*\d{1,2}\.\s*\d{2,4}\.?\)?/gi, '')
+    .replace(/https?:\/\/\S+/g, '') // gole poveznice
+    .replace(/\bwww\.\S+/g, '')
+    // Emojiji i piktografski simboli (🌐 📞 ⚠️ 😊 …) — ne izgovaraju se
+    .replace(
+      /[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{20E3}]/gu,
+      '',
+    )
     .replace(/^\s{0,3}#{1,6}\s+/gm, '')
     .replace(/[*_~>#|]/g, ' ')
     .replace(/^\s*[-+]\s+/gm, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
+
+// Kratki tihi audioisječak (WAV) — pušta se unutar korisničkog klika da se
+// "otključa" reprodukcija zvuka na iOS-u (inače kasniji programski .play() pada).
+const SILENT_AUDIO =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 // Odabir ugodnog ŽENSKOG glasa — prednost hrvatskom, pa poznatim ženskim glasovima.
 function chooseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
@@ -107,6 +121,7 @@ export default function Chat() {
   const speakingRef = useRef(false);
   const ttsVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const ttsKeepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null); // prirodan glas (OpenAI mp3)
   const messagesRef = useRef<Message[]>([]);
   const lastSpokenRef = useRef('');
   // Fallback glasovni unos SNIMANJEM (za uređaje bez Web Speech API-ja, npr. iPhone):
@@ -200,6 +215,11 @@ export default function Chat() {
     }
     cleanupRecording();
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    try {
+      audioRef.current?.pause();
+    } catch {
+      /* ignoriraj */
+    }
     speakingRef.current = false;
     setSpeaking(false);
     setMessages([]);
@@ -397,64 +417,109 @@ export default function Chat() {
     }
   }, []);
 
-  // Izgovori tekst odgovora ženskim glasom (samo tekst, bez izvora). Dok bot
-  // govori, mikrofon je pauziran (da se ne čuje sam); po završetku se slušanje
-  // automatski nastavlja (preko efekta niže).
-  const speak = useCallback((text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const clean = toSpeech(text);
-    if (!clean) return;
-    const synth = window.speechSynthesis;
-    // mikrofon off dok bot govori (oba puta unosa)
-    recognitionRef.current?.stop();
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
+  // Zajednički "kraj govora": vrati stanje i (iOS, tap-to-talk) ugasi glasovni mod
+  // jer je riječ o jednom krugu razgovora.
+  const finishSpeaking = useCallback(() => {
+    speakingRef.current = false;
+    setSpeaking(false);
+    if (useRecorderRef.current) {
+      voiceModeRef.current = false;
+      setVoiceMode(false);
     }
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'hr-HR';
-    if (ttsVoiceRef.current) u.voice = ttsVoiceRef.current;
-    u.rate = 1;
-    u.pitch = 1.05; // malo topliji, ugodniji ton
-    const clearKeepAlive = () => {
-      if (ttsKeepAliveRef.current) {
-        clearInterval(ttsKeepAliveRef.current);
-        ttsKeepAliveRef.current = null;
+  }, []);
+
+  // Rezervni izgovor pregledničkim sintetizatorom (kad prirodan OpenAI glas nije
+  // dostupan). Zvuči robotskije, ali radi bez mreže.
+  const speakViaSynthesis = useCallback(
+    (clean: string) => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) {
+        finishSpeaking();
+        return;
       }
-    };
-    u.onstart = () => {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'hr-HR';
+      if (ttsVoiceRef.current) u.voice = ttsVoiceRef.current;
+      u.rate = 1;
+      u.pitch = 1.05; // malo topliji, ugodniji ton
+      const clearKeepAlive = () => {
+        if (ttsKeepAliveRef.current) {
+          clearInterval(ttsKeepAliveRef.current);
+          ttsKeepAliveRef.current = null;
+        }
+      };
+      u.onstart = () => {
+        // Chrome zaustavi govor nakon ~15 s — periodični resume to sprječava.
+        clearKeepAlive();
+        ttsKeepAliveRef.current = setInterval(() => {
+          try {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+          } catch {
+            /* ignoriraj */
+          }
+        }, 10000);
+      };
+      const done = () => {
+        clearKeepAlive();
+        finishSpeaking();
+      };
+      u.onend = done;
+      u.onerror = done;
+      try {
+        synth.resume(); // ako je u pauziranom stanju
+      } catch {
+        /* ignoriraj */
+      }
+      synth.speak(u);
+    },
+    [finishSpeaking],
+  );
+
+  // Izgovori SUŠTINU odgovora prirodnim ženskim glasom (bez emojija, poveznica i
+  // citata izvora). Najprije pokušava OpenAI TTS (/api/speak → mp3) koji zvuči
+  // prirodno; ako to ne uspije, pada na preglednički sintetizator. Dok bot govori,
+  // mikrofon je pauziran (da se ne čuje sam); po završetku se slušanje nastavlja.
+  const speak = useCallback(
+    async (text: string) => {
+      const clean = toSpeech(text);
+      if (!clean) return;
+      // mikrofon off dok bot govori (oba puta unosa)
+      recognitionRef.current?.stop();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
       speakingRef.current = true;
       setSpeaking(true);
-      // Chrome zaustavi govor nakon ~15 s — periodični resume to sprječava.
-      clearKeepAlive();
-      ttsKeepAliveRef.current = setInterval(() => {
-        try {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        } catch {
-          /* ignoriraj */
-        }
-      }, 10000);
-    };
-    const done = () => {
-      clearKeepAlive();
-      speakingRef.current = false;
-      setSpeaking(false);
-      // iOS (snimanje): jedan krug — nakon pročitanog odgovora ugasi glasovni mod.
-      if (useRecorderRef.current) {
-        voiceModeRef.current = false;
-        setVoiceMode(false);
+      try {
+        const res = await fetch('/api/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: clean }),
+        });
+        if (!res.ok) throw new Error('tts-unavailable');
+        const buf = await res.arrayBuffer();
+        const url = URL.createObjectURL(new Blob([buf], { type: 'audio/mpeg' }));
+        const audio = audioRef.current ?? new Audio();
+        audioRef.current = audio;
+        audio.muted = false;
+        audio.src = url;
+        const finish = () => {
+          URL.revokeObjectURL(url);
+          finishSpeaking();
+        };
+        audio.onended = finish;
+        audio.onerror = finish;
+        await audio.play();
+      } catch {
+        // Mreža/TTS nedostupni ili reprodukcija blokirana — rezervni glas.
+        speakViaSynthesis(clean);
       }
-    };
-    u.onend = done;
-    u.onerror = done;
-    try {
-      synth.resume(); // ako je u pauziranom stanju
-    } catch {
-      /* ignoriraj */
-    }
-    synth.speak(u);
-  }, []);
+    },
+    [finishSpeaking, speakViaSynthesis],
+  );
 
   // Počisti resurse snimanja (timeri, audio kontekst, mikrofonski tokovi).
   const cleanupRecording = useCallback(() => {
@@ -627,8 +692,27 @@ export default function Chat() {
   const startVoiceMode = () => {
     if (busy) return;
     setVoiceErr('');
-    // KLJUČNO: "otključaj" izgovor unutar korisničkog klika — inače preglednici
-    // (osobito mobilni) blokiraju kasniji programski speechSynthesis.speak().
+    // KLJUČNO: "otključaj" reprodukciju zvuka (mp3) unutar korisničkog klika —
+    // inače iOS blokira kasniji programski audio.play() za prirodan glas.
+    try {
+      if (!audioRef.current) audioRef.current = new Audio();
+      const a = audioRef.current;
+      a.muted = true;
+      a.src = SILENT_AUDIO;
+      void a
+        .play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        })
+        .catch(() => {
+          a.muted = false;
+        });
+    } catch {
+      /* ignoriraj */
+    }
+    // "Otključaj" i preglednički izgovor (rezervni put) unutar istog klika.
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
         const s = window.speechSynthesis;
@@ -661,6 +745,11 @@ export default function Chat() {
     }
     cleanupRecording();
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    try {
+      audioRef.current?.pause();
+    } catch {
+      /* ignoriraj */
+    }
     if (ttsKeepAliveRef.current) {
       clearInterval(ttsKeepAliveRef.current);
       ttsKeepAliveRef.current = null;
