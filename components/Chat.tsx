@@ -95,6 +95,7 @@ export default function Chat() {
   const [listening, setListening] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [useRecorder, setUseRecorder] = useState(false); // iOS: snimanje umjesto Web Speech
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -131,6 +132,7 @@ export default function Chat() {
       !!navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === 'function';
     useRecorderRef.current = !webSpeech && recorder;
+    setUseRecorder(!webSpeech && recorder);
     setVoiceSupported(webSpeech || recorder);
   }, []);
 
@@ -430,6 +432,11 @@ export default function Chat() {
       clearKeepAlive();
       speakingRef.current = false;
       setSpeaking(false);
+      // iOS (snimanje): jedan krug — nakon pročitanog odgovora ugasi glasovni mod.
+      if (useRecorderRef.current) {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+      }
     };
     u.onend = done;
     u.onerror = done;
@@ -480,19 +487,27 @@ export default function Chat() {
       return;
     }
     mediaStreamRef.current = stream;
-    const mr = new MediaRecorder(stream);
+    let mr: MediaRecorder;
+    try {
+      mr = new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      setListening(false);
+      return;
+    }
     mediaRecorderRef.current = mr;
     const chunks: BlobPart[] = [];
-    let speechDetected = false;
 
     mr.ondataavailable = (e) => {
       if (e.data && e.data.size) chunks.push(e.data);
     };
     mr.onstop = async () => {
-      const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+      const blob = new Blob(chunks, { type: mr.mimeType || 'audio/mp4' });
       cleanupRecording();
-      // Tišina ili prekratko → ne šaljemo na prijepis; samo nastavi slušati.
-      if (!voiceModeRef.current || !speechDetected || blob.size < 1500) {
+      if (!voiceModeRef.current || blob.size < 1200) {
         setListening(false);
         return;
       }
@@ -514,53 +529,40 @@ export default function Chat() {
       }
     };
 
-    const stopIfRecording = () => {
+    setListening(true);
+    try {
+      mr.start();
+    } catch {
+      cleanupRecording();
+      setListening(false);
+      return;
+    }
+    // Sigurnosna gornja granica; inače korisnik zaustavi snimku tipkom ⏹.
+    maxTimerRef.current = setTimeout(() => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          /* ignoriraj */
+        }
+      }
+    }, 25000);
+  }, [cleanupRecording]);
+
+  // Zaustavi trenutnu snimku i pošalji je na prijepis (gumb ⏹ na iOS-u).
+  const stopRecording = () => {
+    if (maxTimerRef.current) {
+      clearTimeout(maxTimerRef.current);
+      maxTimerRef.current = null;
+    }
+    try {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
-    };
-
-    // Detekcija tišine preko jakosti zvuka (RMS).
-    try {
-      const AC =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AC();
-      audioCtxRef.current = ctx;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      const tick = () => {
-        if (!audioCtxRef.current || !mediaRecorderRef.current) return;
-        analyser.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = (buf[i] - 128) / 128;
-          sum += v * v;
-        }
-        if (Math.sqrt(sum / buf.length) > 0.045) {
-          if (!speechDetected) {
-            speechDetected = true;
-            if (idleTimerRef.current) clearTimeout(idleTimerRef.current); // čuo se govor
-          }
-          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = setTimeout(stopIfRecording, 2200); // ~2,2 s tišine → kraj
-        }
-        if (mediaRecorderRef.current.state === 'recording') requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
     } catch {
-      /* bez detekcije — oslanjamo se na timere */
+      /* ignoriraj */
     }
-
-    setListening(true);
-    mr.start();
-    // Ako se govor ne pojavi u ~6 s, prekini ciklus (efekt pokreće novi).
-    idleTimerRef.current = setTimeout(stopIfRecording, 6000);
-    // Gornja granica trajanja jedne snimke.
-    maxTimerRef.current = setTimeout(stopIfRecording, 15000);
-  }, [cleanupRecording]);
+  };
 
   // Jedinstveni pokretač "slušanja": Web Speech ako je dostupan, inače snimanje.
   const startCapture = useCallback(() => {
@@ -572,6 +574,7 @@ export default function Chat() {
   // (da mikrofon ne čuje sam sebe). Kad ne slušamo i bot ne govori, ponovno
   // pokreni slušanje. Stop gasi cijeli mod.
   useEffect(() => {
+    if (useRecorderRef.current) return; // iOS: snimanje je ručno (tap-to-talk), bez auto-ciklusa
     if (!voiceMode || busy || listening || speaking || recognitionRef.current || mediaRecorderRef.current) {
       return;
     }
@@ -750,35 +753,53 @@ export default function Chat() {
               void send();
             }
           }}
-          placeholder={listening ? 'Slušam… izgovorite pitanje' : 'Postavite pitanje o Gradu Valpovu…'}
+          placeholder={
+            listening
+              ? useRecorder
+                ? 'Snimam… kliknite ⏹ za kraj'
+                : 'Slušam… izgovorite pitanje'
+              : 'Postavite pitanje o Gradu Valpovu…'
+          }
           maxLength={2000}
           disabled={busy}
           aria-label="Vaše pitanje"
         />
-        {voiceSupported && (
-          voiceMode ? (
-            <button
-              type="button"
-              className="chat-mic listening"
-              onClick={stopVoiceMode}
-              aria-pressed={true}
-              aria-label="Završi glasovni razgovor"
-              title="Završi glasovni razgovor"
-            >
-              ⏹
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="chat-mic"
-              onClick={startVoiceMode}
-              disabled={busy}
-              aria-label="Pokreni glasovni razgovor"
-              title="Pokreni glasovni razgovor"
-            >
-              🎤
-            </button>
-          )
+        {voiceSupported && !voiceMode && (
+          <button
+            type="button"
+            className="chat-mic"
+            onClick={startVoiceMode}
+            disabled={busy}
+            aria-label={useRecorder ? 'Snimi pitanje' : 'Pokreni glasovni razgovor'}
+            title={useRecorder ? 'Snimi pitanje' : 'Pokreni glasovni razgovor'}
+          >
+            🎤
+          </button>
+        )}
+        {voiceSupported && voiceMode && useRecorder && listening && (
+          // iOS: snima se — klik zaustavlja i šalje
+          <button
+            type="button"
+            className="chat-mic listening"
+            onClick={stopRecording}
+            aria-label="Zaustavi snimanje i pošalji"
+            title="Zaustavi snimanje i pošalji"
+          >
+            ⏹
+          </button>
+        )}
+        {voiceSupported && voiceMode && !(useRecorder && listening) && (
+          // Web Speech (Android/desktop) ili iOS u tijeku odgovora — klik prekida
+          <button
+            type="button"
+            className="chat-mic listening"
+            onClick={stopVoiceMode}
+            aria-pressed={true}
+            aria-label="Završi glasovni razgovor"
+            title="Završi glasovni razgovor"
+          >
+            ⏹
+          </button>
         )}
         <button type="submit" disabled={busy || !input.trim()}>
           Pošalji
