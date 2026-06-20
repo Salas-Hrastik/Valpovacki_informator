@@ -116,6 +116,7 @@ export default function Chat() {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Provjera podrške za glasovni unos. Prednost Web Speech API-ju; ako ga nema
   // (npr. iPhone/Safari), koristimo snimanje + /api/transcribe.
@@ -312,15 +313,40 @@ export default function Chat() {
     const rec = new Ctor();
     rec.lang = 'hr-HR';
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = true; // kontinuirano — ne prekidaj na svaku kratku pauzu
+    const clearWsTimers = () => {
+      for (const r of [speechEndTimerRef, idleTimerRef]) {
+        if (r.current) {
+          clearTimeout(r.current);
+          r.current = null;
+        }
+      }
+    };
+    const finish = () => {
+      clearWsTimers();
+      try {
+        rec.stop(); // → onend (šalje prepoznati tekst)
+      } catch {
+        /* ignoriraj */
+      }
+    };
     rec.onresult = (event) => {
       let text = '';
       for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
       transcriptRef.current = text;
       setInput(text);
       if (taRef.current) autoGrow(taRef.current);
+      // Čuo se govor: makni "nema govora" timer i resetiraj ZAVRŠNU tišinu (~2,5 s)
+      // — tek nakon te tišine smatramo pitanje dovršenim i šaljemo ga.
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      if (speechEndTimerRef.current) clearTimeout(speechEndTimerRef.current);
+      speechEndTimerRef.current = setTimeout(finish, 2500);
     };
     rec.onend = () => {
+      clearWsTimers();
       recognitionRef.current = null;
       setListening(false);
       if (!voiceModeRef.current) return;
@@ -332,12 +358,13 @@ export default function Chat() {
           // Odgovor je još u tijeku — zapamti pitanje i pošalji ga čim završi.
           pendingRef.current = text;
         } else {
-          void sendRef.current(text); // auto-slanje nakon stanke
+          void sendRef.current(text); // auto-slanje nakon dovršetka
         }
       }
-      // Slušanje se obnavlja preko efekta niže (i tijekom odgovora i nakon njega).
+      // Slušanje se obnavlja preko efekta niže.
     };
     rec.onerror = (event) => {
+      clearWsTimers();
       recognitionRef.current = null;
       setListening(false);
       const err = event?.error;
@@ -352,8 +379,11 @@ export default function Chat() {
     setListening(true);
     try {
       rec.start();
+      // Ako se govor uopće ne pojavi, prekini nakon ~8 s (efekt pokreće novi ciklus).
+      idleTimerRef.current = setTimeout(finish, 8000);
     } catch {
-      /* već pokrenut — zanemari */
+      recognitionRef.current = null;
+      setListening(false);
     }
   }, []);
 
@@ -413,7 +443,7 @@ export default function Chat() {
 
   // Počisti resurse snimanja (timeri, audio kontekst, mikrofonski tokovi).
   const cleanupRecording = useCallback(() => {
-    for (const ref of [silenceTimerRef, idleTimerRef, maxTimerRef]) {
+    for (const ref of [silenceTimerRef, idleTimerRef, maxTimerRef, speechEndTimerRef]) {
       if (ref.current) {
         clearTimeout(ref.current);
         ref.current = null;
@@ -515,7 +545,7 @@ export default function Chat() {
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current); // čuo se govor
           }
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = setTimeout(stopIfRecording, 1400); // ~1,4 s tišine → kraj
+          silenceTimerRef.current = setTimeout(stopIfRecording, 2200); // ~2,2 s tišine → kraj
         }
         if (mediaRecorderRef.current.state === 'recording') requestAnimationFrame(tick);
       };
