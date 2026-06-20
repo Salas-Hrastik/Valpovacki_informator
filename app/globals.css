@@ -49,6 +49,9 @@ body {
 }
 
 .page-header h1 { margin: 0 0 4px; font-size: 1.2rem; color: var(--boja-primarna); }
+/* Naslov: ime asistentice (veće) + podnaslov (manje) */
+.page-title-name { display: block; font-size: 1.45rem; font-weight: 700; color: var(--boja-primarna); }
+.page-title-sub { display: block; font-size: 0.95rem; font-weight: 600; color: var(--boja-tekst-prigusen); }
 .page-header p { margin: 0 0 6px; font-size: 0.84rem; line-height: 1.4; color: var(--boja-tekst-prigusen); }
 /* Logotip Grada Valpova (grb + natpis) iznad naslova */
 .page-logo { display: block; width: 210px; max-width: 100%; height: auto; margin: 0 0 8px; }

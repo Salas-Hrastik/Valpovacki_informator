@@ -15,8 +15,8 @@ const OPIS =
 export const metadata: Metadata = {
   ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
   title: {
-    default: 'Valpovački AI gradski informator',
-    template: '%s · Valpovački AI gradski informator',
+    default: 'Marica sveznalica — Valpovačka AI informatorica',
+    template: '%s · Marica — Valpovačka AI informatorica',
   },
   description: OPIS,
   applicationName: 'Valpovački AI gradski informator',
@@ -31,14 +31,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'hr_HR',
-    siteName: 'Valpovački AI gradski informator',
-    title: 'Valpovački AI gradski informator',
+    siteName: 'Marica sveznalica — Valpovačka AI informatorica',
+    title: 'Marica sveznalica — Valpovačka AI informatorica',
     description: OPIS,
     ...(siteUrl ? { url: siteUrl } : {}),
   },
   twitter: {
     card: 'summary',
-    title: 'Valpovački AI gradski informator',
+    title: 'Marica sveznalica — Valpovačka AI informatorica',
     description: OPIS,
   },
 };
