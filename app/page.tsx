@@ -15,7 +15,10 @@ export default function HomePage() {
           width={816}
           height={235}
         />
-        <h1>Valpovački AI gradski informator</h1>
+        <h1 className="page-title">
+          <span className="page-title-name">Marica sveznalica</span>
+          <span className="page-title-sub">Valpovačka AI informatorica</span>
+        </h1>
         <p>
           Dobro došli! Ovaj servis na tragu je nastojanja Gradske uprave i gradonačelnika
           Grada Valpova da građane što pravodobnije i kvalitetnije informiraju o svim pitanjima
