@@ -107,14 +107,30 @@ export default function Chat() {
   const ttsKeepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const lastSpokenRef = useRef('');
+  // Fallback glasovni unos SNIMANJEM (za uređaje bez Web Speech API-ja, npr. iPhone):
+  // snimi zvuk pa pošalji /api/transcribe (Whisper). useRecorderRef = koristi se taj put.
+  const useRecorderRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Provjera podrške za glasovni unos (samo u pregledniku).
+  // Provjera podrške za glasovni unos. Prednost Web Speech API-ju; ako ga nema
+  // (npr. iPhone/Safari), koristimo snimanje + /api/transcribe.
   useEffect(() => {
     const w = window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
       webkitSpeechRecognition?: SpeechRecognitionCtor;
     };
-    setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+    const webSpeech = !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+    const recorder =
+      typeof MediaRecorder !== 'undefined' &&
+      !!navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function';
+    useRecorderRef.current = !webSpeech && recorder;
+    setVoiceSupported(webSpeech || recorder);
   }, []);
 
   // Učitavanje i odabir ženskog glasa za izgovor (lista glasova stiže asinkrono).
@@ -166,6 +182,12 @@ export default function Chat() {
     lastSpokenRef.current = '';
     setVoiceMode(false);
     recognitionRef.current?.stop();
+    try {
+      mediaRecorderRef.current?.stop();
+    } catch {
+      /* ignoriraj */
+    }
+    cleanupRecording();
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
     speakingRef.current = false;
     setSpeaking(false);
@@ -343,7 +365,11 @@ export default function Chat() {
     const clean = toSpeech(text);
     if (!clean) return;
     const synth = window.speechSynthesis;
-    recognitionRef.current?.stop(); // mikrofon off dok bot govori
+    // mikrofon off dok bot govori (oba puta unosa)
+    recognitionRef.current?.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
     synth.cancel();
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = 'hr-HR';
@@ -385,16 +411,152 @@ export default function Chat() {
     synth.speak(u);
   }, []);
 
+  // Počisti resurse snimanja (timeri, audio kontekst, mikrofonski tokovi).
+  const cleanupRecording = useCallback(() => {
+    for (const ref of [silenceTimerRef, idleTimerRef, maxTimerRef]) {
+      if (ref.current) {
+        clearTimeout(ref.current);
+        ref.current = null;
+      }
+    }
+    try {
+      audioCtxRef.current?.close();
+    } catch {
+      /* ignoriraj */
+    }
+    audioCtxRef.current = null;
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+  }, []);
+
+  // Fallback unos SNIMANJEM (iPhone/Safari): snimi zvuk, automatski stani nakon
+  // kratke tišine, pošalji /api/transcribe (Whisper) i tretiraj prijepis kao
+  // izgovoreno pitanje. "listening" ostaje uključen tijekom prijepisa da se ne
+  // pokrene novi ciklus prerano.
+  const startRecordingCycle = useCallback(async () => {
+    if (mediaRecorderRef.current) return;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      voiceModeRef.current = false; // dopuštenje odbijeno / nema mikrofona
+      setVoiceMode(false);
+      setListening(false);
+      return;
+    }
+    if (!voiceModeRef.current) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    mediaStreamRef.current = stream;
+    const mr = new MediaRecorder(stream);
+    mediaRecorderRef.current = mr;
+    const chunks: BlobPart[] = [];
+    let speechDetected = false;
+
+    mr.ondataavailable = (e) => {
+      if (e.data && e.data.size) chunks.push(e.data);
+    };
+    mr.onstop = async () => {
+      const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+      cleanupRecording();
+      // Tišina ili prekratko → ne šaljemo na prijepis; samo nastavi slušati.
+      if (!voiceModeRef.current || !speechDetected || blob.size < 1500) {
+        setListening(false);
+        return;
+      }
+      try {
+        const fd = new FormData();
+        fd.append('audio', blob, 'snimka');
+        const r = await fetch('/api/transcribe', { method: 'POST', body: fd });
+        const data = (await r.json().catch(() => ({}))) as { text?: string };
+        const text = (data.text || '').trim();
+        setListening(false);
+        if (text && voiceModeRef.current) {
+          setInput('');
+          resetInputHeight();
+          if (busyRef.current) pendingRef.current = text;
+          else void sendRef.current(text);
+        }
+      } catch {
+        setListening(false);
+      }
+    };
+
+    const stopIfRecording = () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+
+    // Detekcija tišine preko jakosti zvuka (RMS).
+    try {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AC();
+      audioCtxRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        if (!audioCtxRef.current || !mediaRecorderRef.current) return;
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        if (Math.sqrt(sum / buf.length) > 0.045) {
+          if (!speechDetected) {
+            speechDetected = true;
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current); // čuo se govor
+          }
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = setTimeout(stopIfRecording, 1400); // ~1,4 s tišine → kraj
+        }
+        if (mediaRecorderRef.current.state === 'recording') requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    } catch {
+      /* bez detekcije — oslanjamo se na timere */
+    }
+
+    setListening(true);
+    mr.start();
+    // Ako se govor ne pojavi u ~6 s, prekini ciklus (efekt pokreće novi).
+    idleTimerRef.current = setTimeout(stopIfRecording, 6000);
+    // Gornja granica trajanja jedne snimke.
+    maxTimerRef.current = setTimeout(stopIfRecording, 15000);
+  }, [cleanupRecording]);
+
+  // Jedinstveni pokretač "slušanja": Web Speech ako je dostupan, inače snimanje.
+  const startCapture = useCallback(() => {
+    if (useRecorderRef.current) void startRecordingCycle();
+    else startListening();
+  }, [startListening, startRecordingCycle]);
+
   // U glasovnom razgovoru slušanje je KONTINUIRANO, ALI pauzira dok bot GOVORI
   // (da mikrofon ne čuje sam sebe). Kad ne slušamo i bot ne govori, ponovno
   // pokreni slušanje. Stop gasi cijeli mod.
   useEffect(() => {
-    if (!voiceMode || listening || speaking || recognitionRef.current) return;
+    if (!voiceMode || busy || listening || speaking || recognitionRef.current || mediaRecorderRef.current) {
+      return;
+    }
     const t = window.setTimeout(() => {
-      if (voiceModeRef.current && !speakingRef.current && !recognitionRef.current) startListening();
+      if (
+        voiceModeRef.current &&
+        !speakingRef.current &&
+        !recognitionRef.current &&
+        !mediaRecorderRef.current
+      ) {
+        startCapture();
+      }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [voiceMode, listening, speaking, startListening]);
+  }, [voiceMode, busy, listening, speaking, startCapture]);
 
   // Kad odgovor završi (busy → false): pošalji pitanje iz reda (izgovoreno usred
   // odgovora), inače pročitaj zadnji odgovor naglas (samo tekst, bez izvora).
@@ -434,7 +596,7 @@ export default function Chat() {
     }
     voiceModeRef.current = true;
     setVoiceMode(true);
-    startListening();
+    startCapture();
   };
   const stopVoiceMode = () => {
     voiceModeRef.current = false;
@@ -443,6 +605,12 @@ export default function Chat() {
     setListening(false);
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    try {
+      mediaRecorderRef.current?.stop();
+    } catch {
+      /* ignoriraj */
+    }
+    cleanupRecording();
     if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
     if (ttsKeepAliveRef.current) {
       clearInterval(ttsKeepAliveRef.current);
