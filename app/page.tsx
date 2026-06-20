@@ -1,9 +1,11 @@
 import Chat from '@/components/Chat';
+import HeaderInfo from '@/components/HeaderInfo';
 
 export default function HomePage() {
   return (
     <main className="page">
       <header className="page-header">
+        <HeaderInfo />
         {/* Statična SVG ikona logotipa — next/image nije potreban; eslint-disable za <img>. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
