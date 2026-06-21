@@ -1,5 +1,11 @@
 /**
- * GET/POST /api/ingest — pokretanje ingestije (Vercel Cron: svaka subota 02:00 UTC).
+ * GET/POST /api/ingest — pokretanje ingestije (Vercel Cron).
+ *
+ * Raspored (vercel.json):
+ *  - Svaki dan (pon–sub) 03:00 UTC: ?scope=homepage — brzo dnevno osvježavanje
+ *    sadržaja s glavne stranice Grada Valpova (valpovo.hr), gdje se informacije
+ *    stalno dodaju.
+ *  - Nedjeljom 02:00 UTC: bez parametra — veliko ažuriranje SVIH izvora.
  *
  * Autorizacija:
  *  - Vercel Cron šalje zaglavlje "Authorization: Bearer <CRON_SECRET>" kada je
@@ -17,6 +23,9 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
+// Domene glavne gradske stranice — dnevno (homepage) osvježavanje obuhvaća njih.
+const HOMEPAGE_HOSTS = ['valpovo.hr', 'www.valpovo.hr'];
+
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
   if (!secret) return false; // bez tajne ne dopuštamo pokretanje
@@ -33,10 +42,15 @@ async function handle(req: Request): Promise<Response> {
     });
   }
 
-  // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
-  const stats = await runIngest({ deadlineMs: 280_000 });
+  // scope=homepage (ili daily) → dnevno osvježavanje samo glavne gradske stranice;
+  // inače veliko ažuriranje svih izvora (nedjeljom).
+  const scope = new URL(req.url).searchParams.get('scope');
+  const onlyHosts = scope === 'homepage' || scope === 'daily' ? HOMEPAGE_HOSTS : undefined;
 
-  return new Response(JSON.stringify({ ok: true, stats }), {
+  // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
+  const stats = await runIngest({ deadlineMs: 280_000, onlyHosts });
+
+  return new Response(JSON.stringify({ ok: true, scope: scope ?? 'full', stats }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }
