@@ -111,6 +111,10 @@ export const config = {
   ragTopK: int('RAG_TOP_K', 12),
   ragScoreThreshold: float('RAG_SCORE_THRESHOLD', 0.30),
   ragFtsFallback: process.env.RAG_FTS_FALLBACK !== '0',
+  // FTS (tekstualni upit) je skup (rangiranje na velikom skupu) pa se koristi SAMO
+  // kao rezerva: kad vektorski upit vrati manje od ovoliko rezultata. Za većinu
+  // pitanja vektor vraća dovoljno pa se FTS preskače (znatno brži dohvat).
+  ragFtsMinVec: int('RAG_FTS_MIN_VEC', 6),
   ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
   // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
   // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika).

@@ -41,21 +41,7 @@ export async function retrieve(
   // Za reranking dohvaćamo ŠIRI skup kandidata pa ih LLM presloži po relevantnosti.
   const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
-  // 1) Leksički (FTS) upit NE ovisi o embeddingu — pokrećemo ga ODMAH, paralelno
-  // s embeddingom i vektorskim upitom, da skratimo ukupno čekanje (jedan rundtrip manje).
-  const tFts0 = Date.now();
-  let ftsMs = 0;
-  const ftsPromise =
-    config.ragFtsFallback
-      ? sb
-          .rpc('search_chunks_fts', { query_text: lexicalQuery(query), match_count: poolSize })
-          .then((res) => {
-            ftsMs = Date.now() - tFts0;
-            return res;
-          })
-      : null;
-
-  // 2) Vektorsko pretraživanje (širi skup)
+  // 1) Vektorsko pretraživanje (širi skup) — HNSW indeks, brzo.
   const tEmbed0 = Date.now();
   const queryEmbedding = await embedText(query);
   const tEmbed1 = Date.now();
@@ -68,11 +54,19 @@ export async function retrieve(
   const vecMs = Date.now() - tEmbed1;
   const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
-  // 3) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Pokrenut je gore
-  // paralelno; ovdje samo pričekamo rezultat i deduplikamo prema vektorskom skupu.
+  // 2) Leksički (FTS) kanal — SAMO KAO REZERVA kad vektor vrati premalo rezultata.
+  // FTS rangiranje je skupo (više sekundi na maloj instanci), a vektor obično
+  // vrati dovoljno; tako se za većinu pitanja FTS preskače i dohvat je puno brži.
   let fts: RetrievedChunk[] = [];
-  if (ftsPromise) {
-    const { data: ftsRows, error: ftsErr } = await ftsPromise;
+  let ftsMs = 0;
+  const useFts = config.ragFtsFallback && vec.length < config.ragFtsMinVec;
+  if (useFts) {
+    const tFts0 = Date.now();
+    const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
+      query_text: lexicalQuery(query),
+      match_count: poolSize,
+    });
+    ftsMs = Date.now() - tFts0;
     if (!ftsErr && ftsRows) {
       const vecIds = new Set(vec.map((r) => r.chunk_id));
       fts = (ftsRows as RetrievedChunk[])
@@ -83,8 +77,8 @@ export async function retrieve(
   if (options.timing) {
     options.timing.embedMs = tEmbed1 - tEmbed0;
     options.timing.vecMs = vecMs; // vektorski upit (HNSW)
-    options.timing.ftsMs = ftsMs; // tekstualni upit (FTS + rangiranje)
-    options.timing.dbMs = Date.now() - tEmbed1; // ukupno baza (paralelno + spajanje)
+    options.timing.ftsMs = ftsMs; // tekstualni upit (FTS + rangiranje); 0 kad se preskoči
+    options.timing.dbMs = Date.now() - tEmbed1; // ukupno baza
   }
 
   // 3) Skup kandidata: ispleti vektor+FTS (FTS zajamčeno zastupljen), filtriraj
