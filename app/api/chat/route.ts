@@ -158,8 +158,20 @@ function streamErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.APIError && err.status === 404) {
     return 'Tražena usluga (jezični model) trenutačno nije dostupna. Molimo obavijestite administratora.';
   }
+  if (err instanceof Anthropic.APIError && err.status === 400) {
+    return 'Zahtjev nije prihvaćen (moguće stanje računa ili ograničenja). Molimo obavijestite administratora. (šifra 400)';
+  }
+  if (err instanceof Anthropic.APIConnectionTimeoutError) {
+    return 'Usluga predugo ne odgovara (istek veze). Molimo pokušajte ponovno.';
+  }
+  if (err instanceof Anthropic.APIConnectionError) {
+    return 'Trenutačno se nije moguće povezati s uslugom. Molimo pokušajte ponovno.';
+  }
+  // Privremena dijagnostika: za neočekivane (ne-API) pogreške prikazujemo i tip
+  // iznimke kako bismo precizno odredili uzrok; uklanja se nakon dijagnoze.
   const code = err instanceof Anthropic.APIError && err.status ? ` (šifra ${err.status})` : '';
-  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}.`;
+  const type = err instanceof Error && err.name ? ` (tip: ${err.name})` : '';
+  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}${type}.`;
 }
 
 /** Strukturirani zapis API-pogreške (status/naziv/poruka vidljivi u Vercel logovima). */
