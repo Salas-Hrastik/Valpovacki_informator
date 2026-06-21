@@ -67,6 +67,16 @@ export async function POST(req: Request): Promise<Response> {
   }
   const question = messages[messages.length - 1].content;
 
+  // Rana provjera: bez Anthropic ključa nema generiranja — jasno dojavi i izađi
+  // (inače bi SDK tek tijekom streama bacio nejasnu englesku poruku o autentikaciji).
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('[chat] Nedostaje ANTHROPIC_API_KEY u okolini — generiranje nije moguće.');
+    return json(
+      { error: 'Usluga trenutačno nije dostupna. Molimo pokušajte kasnije ili obavijestite administratora.' },
+      503,
+    );
+  }
+
   try {
     // 1) Retrieval (embedding upita + pgvector + opcionalni FTS)
     const chunks = await retrieve(question);
@@ -105,10 +115,8 @@ export async function POST(req: Request): Promise<Response> {
           controller.enqueue(sse({ type: 'sources', sources }));
           controller.enqueue(sse({ type: 'done' }));
         } catch (err) {
-          console.error('[chat] Greška tijekom streama:', err);
-          controller.enqueue(
-            sse({ type: 'error', error: 'Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno.' }),
-          );
+          logApiError('[chat] Greška tijekom streama', err);
+          controller.enqueue(sse({ type: 'error', error: streamErrorMessage(err) }));
         } finally {
           controller.close();
           // Anonimizirani zapis razgovora (bez PII; hash IP-a sa soli)
@@ -138,12 +146,53 @@ export async function POST(req: Request): Promise<Response> {
     ) {
       return json({ error: 'Usluga je trenutačno preopterećena. Molimo pokušajte ponovno za nekoliko trenutaka.' }, 503);
     }
-    console.error('[chat] Greška:', err);
+    logApiError('[chat] Greška', err);
     return json({ error: 'Došlo je do pogreške. Molimo pokušajte ponovno.' }, 500);
   }
 }
 
 // --- Pomoćne funkcije -----------------------------------------------------------
+
+/** Razlučuje uzrok pogreške tijekom streama u razumljivu poruku za građanina.
+ *  Generičku granu prati tehnička šifra (HTTP status) radi lakše dijagnostike. */
+function streamErrorMessage(err: unknown): string {
+  if (err instanceof Anthropic.RateLimitError || (err instanceof Anthropic.APIError && err.status === 529)) {
+    return 'Usluga je trenutačno preopterećena. Molimo pokušajte ponovno za nekoliko trenutaka.';
+  }
+  if (
+    err instanceof Anthropic.AuthenticationError ||
+    (err instanceof Anthropic.APIError && (err.status === 401 || err.status === 403))
+  ) {
+    return 'Usluga trenutačno nije ispravno postavljena (pristup). Molimo obavijestite administratora.';
+  }
+  if (err instanceof Anthropic.APIError && err.status === 404) {
+    return 'Tražena usluga (jezični model) trenutačno nije dostupna. Molimo obavijestite administratora.';
+  }
+  if (err instanceof Anthropic.APIError && err.status === 400) {
+    return 'Zahtjev trenutačno nije moguće obraditi. Molimo obavijestite administratora.';
+  }
+  if (err instanceof Anthropic.APIConnectionTimeoutError) {
+    return 'Usluga predugo ne odgovara. Molimo pokušajte ponovno.';
+  }
+  if (err instanceof Anthropic.APIConnectionError) {
+    return 'Trenutačno se nije moguće povezati s uslugom. Molimo pokušajte ponovno.';
+  }
+  // Nedostatak/neispravnost konfiguracije autentikacije SDK javlja kao običnu Error
+  // iznimku (bez statusa) tek pri pozivu — prepoznajemo je po tekstu i jasno dojavimo.
+  if (err instanceof Error && /authentication method|apiKey|x-api-key/i.test(err.message)) {
+    return 'Usluga trenutačno nije dostupna (konfiguracija pristupa). Molimo obavijestite administratora.';
+  }
+  return 'Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno.';
+}
+
+/** Strukturirani zapis API-pogreške (status/naziv/poruka vidljivi u Vercel logovima). */
+function logApiError(label: string, err: unknown): void {
+  if (err instanceof Anthropic.APIError) {
+    console.error(`${label}:`, { name: err.name, status: err.status, message: err.message });
+  } else {
+    console.error(`${label}:`, err);
+  }
+}
 
 function sanitizeMessages(raw: unknown): ChatMessage[] | null {
   if (!Array.isArray(raw)) return null;

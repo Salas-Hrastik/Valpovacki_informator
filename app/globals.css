@@ -38,7 +38,7 @@ body {
 
 /* Info-traka (datum, temperatura, blagdan, imendan) na vrhu zaglavlja */
 .datum-info {
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   line-height: 1.3;
   color: var(--boja-primarna);
   background: var(--boja-pozadina-blago);
@@ -48,17 +48,30 @@ body {
   margin: 0 0 10px;
 }
 
-.page-header h1 { margin: 0 0 4px; font-size: 1.2rem; color: var(--boja-primarna); }
-/* Naslov: ime asistentice (veće) + podnaslov (manje) */
-.page-title-name { display: block; font-size: 1.45rem; font-weight: 700; color: var(--boja-primarna); }
-.page-title-sub { display: block; font-size: 0.95rem; font-weight: 600; color: var(--boja-tekst-prigusen); }
-.page-header p { margin: 0 0 6px; font-size: 0.84rem; line-height: 1.4; color: var(--boja-tekst-prigusen); }
+.page-header h1 { margin: 0 0 6px; font-size: 1.3rem; color: var(--boja-primarna); }
+/* Naslov: ime asistentice (veće) + podnaslov koji otvara dobrodošlicu (poveznica) */
+.page-title-name { display: block; font-size: 1.6rem; font-weight: 700; color: var(--boja-primarna); }
+.page-title-sub-link {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--boja-primarna-svijetla);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.page-title-sub-link:hover { color: var(--boja-primarna); }
 /* Logotip Grada Valpova (grb + natpis) iznad naslova */
 .page-logo { display: block; width: 210px; max-width: 100%; height: auto; margin: 0 0 8px; }
-/* Potpis gradonačelnika ispod dobrodošlice */
-.page-signature {
-  margin: 0 0 8px;
-  font-size: 0.84rem;
+
+/* Skočni prozor s dobrodošlicom — koristi iste osnovne stilove kao izvori */
+.intro-modal p { margin: 0 0 10px; font-size: 0.98rem; line-height: 1.5; color: var(--boja-tekst); }
+.intro-modal-signature {
   font-style: italic;
   font-weight: 600;
   color: var(--boja-primarna);
@@ -86,7 +99,44 @@ body {
 
 .msg { display: flex; }
 .msg-user { justify-content: flex-end; }
-.msg-assistant { justify-content: flex-start; }
+.msg-assistant { justify-content: flex-start; align-items: flex-start; gap: 8px; }
+
+/* Avatar asistentice (Marica) uz odgovore — kao kod poznatih chatbotova */
+.msg-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+/* Prazno stanje (prije prvog pitanja): pozdrav Marice + prijedlozi */
+.chat-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 4px; }
+.chat-empty-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.35rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+.chat-empty-hint { margin: 0; font-size: 1.04rem; line-height: 1.5; color: var(--boja-tekst); }
+.chat-empty-hint strong { color: var(--boja-primarna); }
 
 /* Alatna traka iznad razgovora (Novi razgovor) */
 .chat-toolbar {
@@ -116,8 +166,8 @@ body {
   border: 1px solid var(--boja-primarna);
   color: var(--boja-primarna);
   border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 0.88rem;
+  padding: 8px 15px;
+  font-size: 0.98rem;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, color 0.15s;
@@ -142,8 +192,8 @@ body {
   padding: 9px 13px;
   border-radius: 12px;
   white-space: pre-wrap;
-  line-height: 1.45;
-  font-size: 0.9rem; /* manji font za odgovore */
+  line-height: 1.5;
+  font-size: 1.02rem; /* čitljivo i na manjim ekranima */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); /* blago zasjenjena podloga odgovora */
 }
 
@@ -183,7 +233,7 @@ body {
 /* Gumb "Izvori (N)" — otvara skočni prozor s popisom izvora */
 .msg-sources-btn {
   margin-top: 10px;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   background: transparent;
   color: var(--boja-primarna);
   border: 1px solid var(--boja-rub);
@@ -231,7 +281,7 @@ body {
   border-radius: 6px;
 }
 .sources-modal-close:hover { background: var(--boja-pozadina); color: var(--boja-tekst); }
-.sources-modal ul { margin: 0; padding-left: 18px; font-size: 0.86rem; }
+.sources-modal ul { margin: 0; padding-left: 18px; font-size: 0.95rem; }
 .sources-modal li { margin: 6px 0; }
 .sources-modal a { color: var(--boja-primarna); }
 
@@ -246,9 +296,9 @@ body {
 .chat-input textarea {
   flex: 1;
   min-width: 0; /* dopušta skupljanje na uskim ekranima (bez prelijevanja) */
-  padding: 10px 12px;
+  padding: 11px 14px;
   border: 1px solid var(--boja-rub);
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.4;
@@ -263,11 +313,11 @@ body {
 }
 
 .chat-input button {
-  padding: 10px 18px;
+  padding: 11px 20px;
   background: var(--boja-primarna);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 999px; /* pill — moderniji izgled */
   font-size: 1rem;
   cursor: pointer;
   align-self: flex-end;
@@ -277,14 +327,20 @@ body {
 .chat-input button:hover:not(:disabled) { background: var(--boja-primarna-tamna); }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
 
-/* Gumb mikrofona (glasovni unos pitanja) — drukčiji od "Pošalji" */
+/* Gumb mikrofona (glasovni unos pitanja) — okrugli, drukčiji od "Pošalji" */
 .chat-input .chat-mic {
   background: transparent;
   color: var(--boja-primarna);
   border: 1px solid var(--boja-rub);
-  padding: 9px 13px;
-  font-size: 1.15rem;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .chat-input .chat-mic:hover:not(:disabled) { background: var(--boja-pozadina-blago); }
 .chat-input .chat-mic.listening {
@@ -325,8 +381,8 @@ body {
 .chat-disclaimer {
   margin: 0;
   padding: 6px 12px 8px;
-  font-size: 0.7rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.4;
   color: var(--boja-tekst-prigusen);
 }
 
@@ -346,23 +402,23 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Mobilni izgled (telefoni i uži ekrani) */
+/* Mobilni izgled (telefoni i uži ekrani) — font ostaje čitljiv */
 @media (max-width: 600px) {
   .page { padding: 10px; }
-  .page-header h1 { font-size: 1.1rem; }
-  .page-header p { font-size: 0.82rem; }
+  .page-title-name { font-size: 1.4rem; }
+  .page-title-sub-link { font-size: 0.98rem; }
   .page-logo { width: 180px; }
-  .datum-info { font-size: 0.74rem; padding: 4px 8px; }
+  .datum-info { font-size: 0.82rem; padding: 4px 8px; }
 
   .chat-messages { padding: 12px; }
-  .msg-bubble { max-width: 92%; }
+  .msg-bubble { max-width: 92%; font-size: 1rem; }
 
   .chat-input { padding: 8px; gap: 6px; }
   .chat-input textarea { font-size: 16px; } /* 16px sprječava zoom na iOS-u */
-  .chat-input button { padding: 10px 12px; font-size: 0.95rem; }
-  .chat-input .chat-mic { padding: 9px 10px; }
+  .chat-input button { padding: 11px 16px; font-size: 0.98rem; }
+  .chat-input .chat-mic { width: 42px; height: 42px; padding: 0; }
 
-  .chip { font-size: 0.82rem; padding: 7px 11px; } /* dovoljno velik tap-cilj */
+  .chip { font-size: 0.94rem; padding: 8px 13px; } /* dovoljno velik tap-cilj */
 }
 
 /* Vrlo uski telefoni: dodatno skupi gumbe da unos ostane upotrebljiv */

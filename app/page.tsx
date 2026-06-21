@@ -1,5 +1,6 @@
 import Chat from '@/components/Chat';
 import HeaderInfo from '@/components/HeaderInfo';
+import Intro from '@/components/Intro';
 
 export default function HomePage() {
   return (
@@ -15,18 +16,8 @@ export default function HomePage() {
           width={816}
           height={235}
         />
-        <h1 className="page-title">
-          <span className="page-title-name">Marica sveznalica</span>
-          <span className="page-title-sub">Valpovačka AI informatorica</span>
-        </h1>
-        <p>
-          Dobro došli! Ovaj servis na tragu je nastojanja Gradske uprave i gradonačelnika
-          Grada Valpova da građane što pravodobnije i kvalitetnije informiraju o svim pitanjima
-          od njihovog interesa. Slobodno postavite pitanje o uslugama gradske uprave,
-          natječajima, komunalnim temama, ustanovama i događanjima. Vaše sugestije bit će nam
-          dragocjene u unapređenju AI informatora!
-        </p>
-        <p className="page-signature">Vaš gradonačelnik Matko</p>
+        {/* Naslov + skočni prozor s dobrodošlicom (klik na podnaslov). */}
+        <Intro />
       </header>
       <Chat />
     </main>

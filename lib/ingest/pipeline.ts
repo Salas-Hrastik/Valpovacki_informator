@@ -53,7 +53,9 @@ export interface IngestStats {
   durationMs: number;
 }
 
-export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number; onlyUrls?: string[] } = {}): Promise<IngestStats> {
+export async function runIngest(
+  opts: { maxUrls?: number; deadlineMs?: number; onlyUrls?: string[]; onlyHosts?: string[] } = {},
+): Promise<IngestStats> {
   const startedAt = Date.now();
   const deadline = opts.deadlineMs ? startedAt + opts.deadlineMs : Infinity;
   const maxUrls = opts.maxUrls ?? config.ingestMaxUrls;
@@ -67,11 +69,25 @@ export async function runIngest(opts: { maxUrls?: number; deadlineMs?: number; o
     unchanged: 0, skippedFresh: 0, failed: 0, ocrUsed: 0, failedUrls: [], durationMs: 0,
   };
 
-  const allUrls = opts.onlyUrls ?? await gatherUrls();
+  let allUrls = opts.onlyUrls ?? await gatherUrls();
+  // Dnevno ažuriranje: ograniči na zadane domene (npr. valpovo.hr) — tu se
+  // sadržaj najčešće dodaje. Nedjeljom (bez onlyHosts) obrađuje se sve.
+  if (!opts.onlyUrls && opts.onlyHosts?.length) {
+    const hosts = new Set(opts.onlyHosts.map((h) => h.toLowerCase()));
+    allUrls = allUrls.filter((u) => {
+      try {
+        return hosts.has(new URL(u).host.toLowerCase());
+      } catch {
+        return false;
+      }
+    });
+  }
   console.log(
     opts.onlyUrls
       ? `[ingest] Ciljani način: ${allUrls.length} zadanih URL-ova.`
-      : `[ingest] Pronađeno ${allUrls.length} URL-ova iz sitemapova/seedova.`,
+      : opts.onlyHosts?.length
+        ? `[ingest] Dnevno (domene: ${opts.onlyHosts.join(', ')}): ${allUrls.length} URL-ova.`
+        : `[ingest] Pronađeno ${allUrls.length} URL-ova iz sitemapova/seedova.`,
   );
 
   // Učitaj SVE postojeće dokumente u stranicama po 1000 (obilazi Supabase limit)
