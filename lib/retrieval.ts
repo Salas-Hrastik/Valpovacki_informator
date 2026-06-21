@@ -27,8 +27,6 @@ export interface RetrieveOptions {
   scoreThreshold?: number;
   /** Dodatni filtar po dopuštenim domenama (sigurnosna mreža za citate). */
   allowedHosts?: string[];
-  /** Privremena dijagnostika brzine: embedMs (OpenAI), vecMs/ftsMs/dbMs (Supabase). */
-  timing?: { embedMs?: number; vecMs?: number; ftsMs?: number; dbMs?: number };
 }
 
 export async function retrieve(
@@ -42,43 +40,31 @@ export async function retrieve(
   const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
   // 1) Vektorsko pretraživanje (širi skup) — HNSW indeks, brzo.
-  const tEmbed0 = Date.now();
   const queryEmbedding = await embedText(query);
-  const tEmbed1 = Date.now();
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
     query_embedding: JSON.stringify(queryEmbedding), // pgvector prima '[...]' literal
     match_count: poolSize,
     score_threshold: threshold,
   });
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
-  const vecMs = Date.now() - tEmbed1;
   const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
   // 2) Leksički (FTS) kanal — SAMO KAO REZERVA kad vektor vrati premalo rezultata.
   // FTS rangiranje je skupo (više sekundi na maloj instanci), a vektor obično
   // vrati dovoljno; tako se za većinu pitanja FTS preskače i dohvat je puno brži.
   let fts: RetrievedChunk[] = [];
-  let ftsMs = 0;
   const useFts = config.ragFtsFallback && vec.length < config.ragFtsMinVec;
   if (useFts) {
-    const tFts0 = Date.now();
     const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
       query_text: lexicalQuery(query),
       match_count: poolSize,
     });
-    ftsMs = Date.now() - tFts0;
     if (!ftsErr && ftsRows) {
       const vecIds = new Set(vec.map((r) => r.chunk_id));
       fts = (ftsRows as RetrievedChunk[])
         .filter((r) => !vecIds.has(r.chunk_id))
         .map((r) => ({ ...r, score: Math.min(r.score, threshold) }));
     }
-  }
-  if (options.timing) {
-    options.timing.embedMs = tEmbed1 - tEmbed0;
-    options.timing.vecMs = vecMs; // vektorski upit (HNSW)
-    options.timing.ftsMs = ftsMs; // tekstualni upit (FTS + rangiranje); 0 kad se preskoči
-    options.timing.dbMs = Date.now() - tEmbed1; // ukupno baza
   }
 
   // 3) Skup kandidata: ispleti vektor+FTS (FTS zajamčeno zastupljen), filtriraj
