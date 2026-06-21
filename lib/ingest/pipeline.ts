@@ -22,7 +22,6 @@ import {
 // Postavljen ispod tjednog ciklusa (7 dana) kako bismo izbjegli rad samo s
 // dvostrukim provjeravanjem, a istovremeno ostavili marginu za pomak rasporeda.
 const FRESH_DAYS = 5;
-const FRESH_MS = FRESH_DAYS * 24 * 60 * 60 * 1000;
 const PAGE = 1000;
 
 /**
@@ -54,11 +53,20 @@ export interface IngestStats {
 }
 
 export async function runIngest(
-  opts: { maxUrls?: number; deadlineMs?: number; onlyUrls?: string[]; onlyHosts?: string[] } = {},
+  opts: {
+    maxUrls?: number;
+    deadlineMs?: number;
+    onlyUrls?: string[];
+    onlyHosts?: string[];
+    freshDays?: number;
+  } = {},
 ): Promise<IngestStats> {
   const startedAt = Date.now();
   const deadline = opts.deadlineMs ? startedAt + opts.deadlineMs : Infinity;
   const maxUrls = opts.maxUrls ?? config.ingestMaxUrls;
+  // Prozor svježine (dani) — nadjačiv po pokretanju: dnevni prolaz koristi kraći
+  // prozor (npr. 1 dan) da bi se događanja/vijesti uistinu osvježavali svaki dan.
+  const freshMs = (opts.freshDays ?? FRESH_DAYS) * 24 * 60 * 60 * 1000;
   // Ciljani način: kad su zadani onlyUrls, obrađujemo samo njih (+ PDF/slike koje
   // otkrijemo na tim stranicama) i tjeramo obradu (zaobilazimo provjeru svježine).
   const force = config.ingestForce || (opts.onlyUrls?.length ?? 0) > 0;
@@ -140,7 +148,7 @@ export async function runIngest(
   const isFresh = (u: string): boolean => {
     if (force) return false;
     const p = existingMap.get(u);
-    return !!(p && p.fetchedAt && Date.now() - new Date(p.fetchedAt).getTime() < FRESH_MS);
+    return !!(p && p.fetchedAt && Date.now() - new Date(p.fetchedAt).getTime() < freshMs);
   };
 
   async function processUrl(url: string): Promise<void> {
@@ -151,7 +159,7 @@ export async function runIngest(
     if (
       !force &&
       prev && prev.fetchedAt &&
-      Date.now() - new Date(prev.fetchedAt).getTime() < FRESH_MS
+      Date.now() - new Date(prev.fetchedAt).getTime() < freshMs
     ) {
       stats.skippedFresh++;
       return;
