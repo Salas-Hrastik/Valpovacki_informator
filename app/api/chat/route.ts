@@ -67,6 +67,16 @@ export async function POST(req: Request): Promise<Response> {
   }
   const question = messages[messages.length - 1].content;
 
+  // Rana provjera: bez Anthropic ključa nema generiranja — jasno dojavi i izađi
+  // (inače bi SDK tek tijekom streama bacio nejasnu englesku poruku o autentikaciji).
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('[chat] Nedostaje ANTHROPIC_API_KEY u okolini — generiranje nije moguće.');
+    return json(
+      { error: 'Usluga trenutačno nije dostupna. Molimo pokušajte kasnije ili obavijestite administratora.' },
+      503,
+    );
+  }
+
   try {
     // 1) Retrieval (embedding upita + pgvector + opcionalni FTS)
     const chunks = await retrieve(question);
@@ -159,23 +169,20 @@ function streamErrorMessage(err: unknown): string {
     return 'Tražena usluga (jezični model) trenutačno nije dostupna. Molimo obavijestite administratora.';
   }
   if (err instanceof Anthropic.APIError && err.status === 400) {
-    return 'Zahtjev nije prihvaćen (moguće stanje računa ili ograničenja). Molimo obavijestite administratora. (šifra 400)';
+    return 'Zahtjev trenutačno nije moguće obraditi. Molimo obavijestite administratora.';
   }
   if (err instanceof Anthropic.APIConnectionTimeoutError) {
-    return 'Usluga predugo ne odgovara (istek veze). Molimo pokušajte ponovno.';
+    return 'Usluga predugo ne odgovara. Molimo pokušajte ponovno.';
   }
   if (err instanceof Anthropic.APIConnectionError) {
     return 'Trenutačno se nije moguće povezati s uslugom. Molimo pokušajte ponovno.';
   }
-  // Privremena dijagnostika: za neočekivane (ne-API) pogreške prikazujemo tip i
-  // (skraćeni) tekst iznimke kako bismo precizno odredili uzrok; uklanja se nakon dijagnoze.
-  const code = err instanceof Anthropic.APIError && err.status ? ` (šifra ${err.status})` : '';
-  const type = err instanceof Error && err.name ? ` (tip: ${err.name})` : '';
-  const detail =
-    err instanceof Error && err.message
-      ? ` (detalji: ${err.message.replace(/\s+/g, ' ').slice(0, 160)})`
-      : '';
-  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}${type}${detail}.`;
+  // Nedostatak/neispravnost konfiguracije autentikacije SDK javlja kao običnu Error
+  // iznimku (bez statusa) tek pri pozivu — prepoznajemo je po tekstu i jasno dojavimo.
+  if (err instanceof Error && /authentication method|apiKey|x-api-key/i.test(err.message)) {
+    return 'Usluga trenutačno nije dostupna (konfiguracija pristupa). Molimo obavijestite administratora.';
+  }
+  return 'Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno.';
 }
 
 /** Strukturirani zapis API-pogreške (status/naziv/poruka vidljivi u Vercel logovima). */
