@@ -56,6 +56,8 @@ export default function Chat() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // Indeks poruke čiji je skočni prozor s izvorima trenutačno otvoren (ili null).
   const [sourcesIdx, setSourcesIdx] = useState<number | null>(null);
+  // URL poveznice koja se prikazuje u skočnom pregledniku (ili null kad je zatvoren).
+  const [linkPreview, setLinkPreview] = useState<string | null>(null);
   // Glasovni unos (Web Speech API): podržanost, je li snimanje u tijeku te
   // "glasovni razgovor" (hands-free: nakon stanke se pitanje šalje samo, a nakon
   // odgovora se ponovno sluša — dok korisnik ne zaustavi).
@@ -122,6 +124,24 @@ export default function Chat() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [sourcesIdx]);
+
+  // Zatvaranje skočnog preglednika poveznice tipkom Esc.
+  useEffect(() => {
+    if (linkPreview === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLinkPreview(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [linkPreview]);
+
+  // Otvara poveznicu (izvor ili poveznicu u odgovoru) u skočnom pregledniku
+  // umjesto u novoj kartici. Vraća handler za onClick koji spriječi zadanu navigaciju.
+  const openLink = (url?: string) => (e: React.MouseEvent) => {
+    if (!url) return;
+    e.preventDefault();
+    setLinkPreview(url);
+  };
 
   const scrollDown = () =>
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }));
@@ -570,8 +590,14 @@ export default function Chat() {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       // Poveznice se otvaraju u novoj kartici, sigurno (noopener).
-                      a: ({ node, ...props }) => (
-                        <a target="_blank" rel="noopener noreferrer" {...props} />
+                      a: ({ node, href, ...props }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={openLink(href)}
+                          {...props}
+                        />
                       ),
                     }}
                   >
@@ -744,13 +770,67 @@ export default function Chat() {
             <ul>
               {messages[sourcesIdx]!.sources!.map((s) => (
                 <li key={s.url}>
-                  <a href={s.url} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={openLink(s.url)}
+                  >
                     {s.title}
                   </a>{' '}
                   <span className="msg-source-date">(provjereno: {formatDateHr(s.fetched_at)})</span>
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {linkPreview !== null && (
+        <div
+          className="link-modal-backdrop"
+          role="presentation"
+          onClick={() => setLinkPreview(null)}
+        >
+          <div
+            className="link-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pregled poveznice"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="link-modal-head">
+              <span className="link-modal-url" title={linkPreview}>
+                {linkPreview}
+              </span>
+              <a
+                className="link-modal-open"
+                href={linkPreview}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Otvori u novoj kartici ↗
+              </a>
+              <button
+                type="button"
+                className="link-modal-close"
+                onClick={() => setLinkPreview(null)}
+                aria-label="Zatvori pregled"
+              >
+                ✕
+              </button>
+            </div>
+            <iframe
+              className="link-modal-frame"
+              src={linkPreview}
+              title="Pregled poveznice"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              referrerPolicy="no-referrer"
+            />
+            <p className="link-modal-note">
+              Ako se stranica ne prikaže, neke je stranice nije moguće ugraditi —
+              upotrijebite „Otvori u novoj kartici”.
+            </p>
           </div>
         </div>
       )}

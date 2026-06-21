@@ -114,7 +114,9 @@ export const config = {
   ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
   // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
   // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika).
-  ragRerank: process.env.RAG_RERANK !== '0',
+  // PREMA ZADANOM ISKLJUČEN radi brzine (dodatni LLM-poziv prije odgovora znatno
+  // usporava prvi token); uključuje se s RAG_RERANK=1 ako zatreba veća točnost.
+  ragRerank: process.env.RAG_RERANK === '1',
   ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 24),
   rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 

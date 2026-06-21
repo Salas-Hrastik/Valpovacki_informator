@@ -285,6 +285,79 @@ body {
 .sources-modal li { margin: 6px 0; }
 .sources-modal a { color: var(--boja-primarna); }
 
+/* Skočni preglednik poveznice (izvori i poveznice u odgovoru otvaraju se ovdje) */
+.link-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1100;
+}
+.link-modal {
+  background: var(--boja-bijela);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 960px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.link-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--boja-rub);
+}
+.link-modal-url {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--boja-tekst-prigusen);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.link-modal-open {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: var(--boja-primarna);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.link-modal-open:hover { text-decoration: underline; }
+.link-modal-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--boja-tekst-prigusen);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.link-modal-close:hover { background: var(--boja-pozadina); color: var(--boja-tekst); }
+.link-modal-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: var(--boja-pozadina);
+}
+.link-modal-note {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--boja-tekst-prigusen);
+  border-top: 1px solid var(--boja-rub);
+  text-align: center;
+}
+
 .chat-input {
   display: flex;
   align-items: flex-end;
