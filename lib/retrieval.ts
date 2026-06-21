@@ -27,8 +27,8 @@ export interface RetrieveOptions {
   scoreThreshold?: number;
   /** Dodatni filtar po dopuštenim domenama (sigurnosna mreža za citate). */
   allowedHosts?: string[];
-  /** Privremena dijagnostika brzine: funkcija puni embedMs (OpenAI) i dbMs (Supabase). */
-  timing?: { embedMs?: number; dbMs?: number };
+  /** Privremena dijagnostika brzine: embedMs (OpenAI), vecMs/ftsMs/dbMs (Supabase). */
+  timing?: { embedMs?: number; vecMs?: number; ftsMs?: number; dbMs?: number };
 }
 
 export async function retrieve(
@@ -43,9 +43,16 @@ export async function retrieve(
 
   // 1) Leksički (FTS) upit NE ovisi o embeddingu — pokrećemo ga ODMAH, paralelno
   // s embeddingom i vektorskim upitom, da skratimo ukupno čekanje (jedan rundtrip manje).
+  const tFts0 = Date.now();
+  let ftsMs = 0;
   const ftsPromise =
     config.ragFtsFallback
-      ? sb.rpc('search_chunks_fts', { query_text: lexicalQuery(query), match_count: poolSize })
+      ? sb
+          .rpc('search_chunks_fts', { query_text: lexicalQuery(query), match_count: poolSize })
+          .then((res) => {
+            ftsMs = Date.now() - tFts0;
+            return res;
+          })
       : null;
 
   // 2) Vektorsko pretraživanje (širi skup)
@@ -58,6 +65,7 @@ export async function retrieve(
     score_threshold: threshold,
   });
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
+  const vecMs = Date.now() - tEmbed1;
   const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
   // 3) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Pokrenut je gore
@@ -74,7 +82,9 @@ export async function retrieve(
   }
   if (options.timing) {
     options.timing.embedMs = tEmbed1 - tEmbed0;
-    options.timing.dbMs = Date.now() - tEmbed1; // vektor + FTS (paralelno) + spajanje
+    options.timing.vecMs = vecMs; // vektorski upit (HNSW)
+    options.timing.ftsMs = ftsMs; // tekstualni upit (FTS + rangiranje)
+    options.timing.dbMs = Date.now() - tEmbed1; // ukupno baza (paralelno + spajanje)
   }
 
   // 3) Skup kandidata: ispleti vektor+FTS (FTS zajamčeno zastupljen), filtriraj

@@ -79,7 +79,7 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     // 1) Retrieval (embedding upita + pgvector + opcionalni FTS)
-    const retrieveTiming: { embedMs?: number; dbMs?: number } = {};
+    const retrieveTiming: { embedMs?: number; vecMs?: number; ftsMs?: number; dbMs?: number } = {};
     const chunks = await retrieve(question, { timing: retrieveTiming });
     const sources = uniqueSources(chunks);
     const retrieveMs = Date.now() - startedAt; // privremena dijagnostika brzine
@@ -123,7 +123,8 @@ export async function POST(req: Request): Promise<Response> {
               timing: {
                 retrieveMs,
                 embedMs: retrieveTiming.embedMs ?? 0,
-                dbMs: retrieveTiming.dbMs ?? 0,
+                vecMs: retrieveTiming.vecMs ?? 0,
+                ftsMs: retrieveTiming.ftsMs ?? 0,
                 ttftMs,
                 totalMs: Date.now() - startedAt,
               },
