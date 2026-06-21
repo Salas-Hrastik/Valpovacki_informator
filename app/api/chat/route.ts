@@ -167,11 +167,15 @@ function streamErrorMessage(err: unknown): string {
   if (err instanceof Anthropic.APIConnectionError) {
     return 'Trenutačno se nije moguće povezati s uslugom. Molimo pokušajte ponovno.';
   }
-  // Privremena dijagnostika: za neočekivane (ne-API) pogreške prikazujemo i tip
-  // iznimke kako bismo precizno odredili uzrok; uklanja se nakon dijagnoze.
+  // Privremena dijagnostika: za neočekivane (ne-API) pogreške prikazujemo tip i
+  // (skraćeni) tekst iznimke kako bismo precizno odredili uzrok; uklanja se nakon dijagnoze.
   const code = err instanceof Anthropic.APIError && err.status ? ` (šifra ${err.status})` : '';
   const type = err instanceof Error && err.name ? ` (tip: ${err.name})` : '';
-  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}${type}.`;
+  const detail =
+    err instanceof Error && err.message
+      ? ` (detalji: ${err.message.replace(/\s+/g, ' ').slice(0, 160)})`
+      : '';
+  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}${type}${detail}.`;
 }
 
 /** Strukturirani zapis API-pogreške (status/naziv/poruka vidljivi u Vercel logovima). */
