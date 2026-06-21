@@ -39,7 +39,14 @@ export async function retrieve(
   // Za reranking dohvaćamo ŠIRI skup kandidata pa ih LLM presloži po relevantnosti.
   const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
-  // 1) Vektorsko pretraživanje (širi skup)
+  // 1) Leksički (FTS) upit NE ovisi o embeddingu — pokrećemo ga ODMAH, paralelno
+  // s embeddingom i vektorskim upitom, da skratimo ukupno čekanje (jedan rundtrip manje).
+  const ftsPromise =
+    config.ragFtsFallback
+      ? sb.rpc('search_chunks_fts', { query_text: lexicalQuery(query), match_count: poolSize })
+      : null;
+
+  // 2) Vektorsko pretraživanje (širi skup)
   const queryEmbedding = await embedText(query);
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
     query_embedding: JSON.stringify(queryEmbedding), // pgvector prima '[...]' literal
@@ -49,15 +56,11 @@ export async function retrieve(
   if (vecErr) throw new Error(`match_chunks: ${vecErr.message}`);
   const vec: RetrievedChunk[] = (vecRows ?? []) as RetrievedChunk[];
 
-  // 2) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Šaljemo samo
-  // ZNAČAJNE riječi (≥4 slova) — brže i preciznije: izbjegavamo skupe prefiks-upite
-  // za česte kratke riječi ("tko", "su", "za") koje pogađaju stotine isječaka.
+  // 3) Leksički (FTS) kanal — UVIJEK doprinosi (hibridni dohvat). Pokrenut je gore
+  // paralelno; ovdje samo pričekamo rezultat i deduplikamo prema vektorskom skupu.
   let fts: RetrievedChunk[] = [];
-  if (config.ragFtsFallback) {
-    const { data: ftsRows, error: ftsErr } = await sb.rpc('search_chunks_fts', {
-      query_text: lexicalQuery(query),
-      match_count: poolSize,
-    });
+  if (ftsPromise) {
+    const { data: ftsRows, error: ftsErr } = await ftsPromise;
     if (!ftsErr && ftsRows) {
       const vecIds = new Set(vec.map((r) => r.chunk_id));
       fts = (ftsRows as RetrievedChunk[])
