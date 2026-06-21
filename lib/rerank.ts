@@ -11,7 +11,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config';
 import type { RetrievedChunk } from './retrieval';
 
-const SNIPPET_CHARS = 600; // koliko teksta po kandidatu šaljemo rerankeru
+const SNIPPET_CHARS = 450; // koliko teksta po kandidatu šaljemo rerankeru
+const RERANK_TIMEOUT_MS = 8000; // gornja granica čekanja; nakon toga izvorni poredak
 
 export async function rerankChunks(
   query: string,
@@ -26,15 +27,20 @@ export async function rerankChunks(
       .join('\n\n');
 
     const anthropic = new Anthropic(); // ANTHROPIC_API_KEY iz okoline
-    const msg = await anthropic.messages.create({
-      model: config.rerankModel,
-      max_tokens: 80,
-      system:
-        'Ti odabireš izvore za odgovor na pitanje građanina. Na temelju pitanja vrati ' +
-        `indekse isječaka koji NAJBOLJE sadrže odgovor, najrelevantniji prvi, najviše ${topN}. ` +
-        'Odgovori ISKLJUČIVO zarezom odvojenim indeksima (npr. "3,0,7"). Bez objašnjenja.',
-      messages: [{ role: 'user', content: `Pitanje: ${query}\n\nIsječci:\n${list}` }],
-    });
+    const msg = await anthropic.messages.create(
+      {
+        model: config.rerankModel,
+        max_tokens: 80,
+        system:
+          'Ti odabireš izvore za odgovor na pitanje građanina. Na temelju pitanja vrati ' +
+          `indekse isječaka koji NAJBOLJE sadrže odgovor, najrelevantniji prvi, najviše ${topN}. ` +
+          'Odgovori ISKLJUČIVO zarezom odvojenim indeksima (npr. "3,0,7"). Bez objašnjenja.',
+        messages: [{ role: 'user', content: `Pitanje: ${query}\n\nIsječci:\n${list}` }],
+      },
+      // Rerank je "best effort": kratak timeout i bez ponavljanja da ne usporava
+      // i ne visi odgovor; ako padne, niže se vraća izvorni poredak.
+      { timeout: RERANK_TIMEOUT_MS, maxRetries: 0 },
+    );
 
     const text = msg.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
     const ids = [...text.matchAll(/\d+/g)]

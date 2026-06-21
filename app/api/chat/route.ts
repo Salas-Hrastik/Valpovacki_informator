@@ -105,10 +105,8 @@ export async function POST(req: Request): Promise<Response> {
           controller.enqueue(sse({ type: 'sources', sources }));
           controller.enqueue(sse({ type: 'done' }));
         } catch (err) {
-          console.error('[chat] Greška tijekom streama:', err);
-          controller.enqueue(
-            sse({ type: 'error', error: 'Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno.' }),
-          );
+          logApiError('[chat] Greška tijekom streama', err);
+          controller.enqueue(sse({ type: 'error', error: streamErrorMessage(err) }));
         } finally {
           controller.close();
           // Anonimizirani zapis razgovora (bez PII; hash IP-a sa soli)
@@ -138,12 +136,40 @@ export async function POST(req: Request): Promise<Response> {
     ) {
       return json({ error: 'Usluga je trenutačno preopterećena. Molimo pokušajte ponovno za nekoliko trenutaka.' }, 503);
     }
-    console.error('[chat] Greška:', err);
+    logApiError('[chat] Greška', err);
     return json({ error: 'Došlo je do pogreške. Molimo pokušajte ponovno.' }, 500);
   }
 }
 
 // --- Pomoćne funkcije -----------------------------------------------------------
+
+/** Razlučuje uzrok pogreške tijekom streama u razumljivu poruku za građanina.
+ *  Generičku granu prati tehnička šifra (HTTP status) radi lakše dijagnostike. */
+function streamErrorMessage(err: unknown): string {
+  if (err instanceof Anthropic.RateLimitError || (err instanceof Anthropic.APIError && err.status === 529)) {
+    return 'Usluga je trenutačno preopterećena. Molimo pokušajte ponovno za nekoliko trenutaka.';
+  }
+  if (
+    err instanceof Anthropic.AuthenticationError ||
+    (err instanceof Anthropic.APIError && (err.status === 401 || err.status === 403))
+  ) {
+    return 'Usluga trenutačno nije ispravno postavljena (pristup). Molimo obavijestite administratora.';
+  }
+  if (err instanceof Anthropic.APIError && err.status === 404) {
+    return 'Tražena usluga (jezični model) trenutačno nije dostupna. Molimo obavijestite administratora.';
+  }
+  const code = err instanceof Anthropic.APIError && err.status ? ` (šifra ${err.status})` : '';
+  return `Došlo je do pogreške pri generiranju odgovora. Molimo pokušajte ponovno${code}.`;
+}
+
+/** Strukturirani zapis API-pogreške (status/naziv/poruka vidljivi u Vercel logovima). */
+function logApiError(label: string, err: unknown): void {
+  if (err instanceof Anthropic.APIError) {
+    console.error(`${label}:`, { name: err.name, status: err.status, message: err.message });
+  } else {
+    console.error(`${label}:`, err);
+  }
+}
 
 function sanitizeMessages(raw: unknown): ChatMessage[] | null {
   if (!Array.isArray(raw)) return null;
