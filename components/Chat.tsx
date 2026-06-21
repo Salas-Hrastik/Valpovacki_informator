@@ -74,7 +74,6 @@ export default function Chat() {
   const busyRef = useRef(false);
   const pendingRef = useRef('');
   const messagesRef = useRef<Message[]>([]);
-  const lastAnsweredRef = useRef(''); // zadnji već obrađeni odgovor (za iOS jedan krug)
   // Fallback glasovni unos SNIMANJEM (za uređaje bez Web Speech API-ja, npr. iPhone):
   // snimi zvuk pa pošalji /api/transcribe (Whisper). useRecorderRef = koristi se taj put.
   const useRecorderRef = useRef(false);
@@ -82,6 +81,7 @@ export default function Chat() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // iOS: praćenje glasnoće radi auto-stopa
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -160,7 +160,6 @@ export default function Chat() {
     if (busy) return;
     voiceModeRef.current = false;
     pendingRef.current = '';
-    lastAnsweredRef.current = '';
     setVoiceMode(false);
     setListening(false);
     recognitionRef.current?.stop();
@@ -327,19 +326,19 @@ export default function Chat() {
       clearWsTimers();
       recognitionRef.current = null;
       setListening(false);
-      if (!voiceModeRef.current) return;
+      const wasActive = voiceModeRef.current;
+      // Diktat je JEDAN KRUG: nakon stanke (ili ručnog zaustavljanja) glasovni se
+      // unos gasi i pitanje se šalje — bez ponovnog automatskog slušanja.
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      if (!wasActive) return;
       const text = transcriptRef.current.trim();
       if (text) {
         setInput('');
         resetInputHeight();
-        if (busyRef.current) {
-          // Odgovor je još u tijeku — zapamti pitanje i pošalji ga čim završi.
-          pendingRef.current = text;
-        } else {
-          void sendRef.current(text); // auto-slanje nakon dovršetka
-        }
+        if (busyRef.current) pendingRef.current = text; // odgovor još traje — pošalji čim završi
+        else void sendRef.current(text); // auto-slanje nakon stanke (pismeni odgovor)
       }
-      // Slušanje se obnavlja preko efekta niže.
     };
     rec.onerror = (event) => {
       clearWsTimers();
@@ -372,6 +371,10 @@ export default function Chat() {
         clearTimeout(ref.current);
         ref.current = null;
       }
+    }
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
     }
     try {
       audioCtxRef.current?.close();
@@ -425,8 +428,12 @@ export default function Chat() {
     };
     mr.onstop = async () => {
       const blob = new Blob(chunks, { type: mr.mimeType || 'audio/mp4' });
+      const wasActive = voiceModeRef.current;
       cleanupRecording();
-      if (!voiceModeRef.current || blob.size < 1200) {
+      // Diktat je JEDAN KRUG — nakon snimke gasimo glasovni unos.
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      if (!wasActive || blob.size < 1200) {
         setListening(false);
         return;
       }
@@ -439,12 +446,12 @@ export default function Chat() {
         setListening(false);
         if (!r.ok) {
           setVoiceErr('Prijepis govora trenutačno nije moguć. Pokušajte ponovno.');
-        } else if (text && voiceModeRef.current) {
+        } else if (text) {
           setInput('');
           resetInputHeight();
           if (busyRef.current) pendingRef.current = text;
           else void sendRef.current(text);
-        } else if (!text) {
+        } else {
           setVoiceErr('Nisam razabrala govor. Pokušajte ponovno, bliže mikrofonu.');
         }
       } catch {
@@ -461,7 +468,54 @@ export default function Chat() {
       setListening(false);
       return;
     }
-    // Sigurnosna gornja granica; inače korisnik zaustavi snimku tipkom ⏹.
+
+    // AUTO-STOP NA STANKU (diktat): pratimo glasnoću mikrofona; kad korisnik
+    // prestane govoriti (~2 s tišine nakon što je nešto rekao), snimka se sama
+    // zaustavlja i šalje na prijepis — bez potrebe za ručnim ⏹.
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        // iOS zna otvoriti kontekst "suspended" nakon await-a — pokušaj nastaviti
+        // (inače analiza glasnoće ne dobiva podatke). Ručni ⏹ i maxTimer su rezerva.
+        if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+        const sourceNode = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        sourceNode.connect(analyser);
+        const data = new Uint8Array(analyser.fftSize);
+        let spoke = false;
+        const SILENCE_MS = 2000;
+        vadIntervalRef.current = setInterval(() => {
+          if (!mediaRecorderRef.current) return;
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / data.length);
+          if (rms > 0.035) {
+            // čuje se govor — poništi odbrojavanje tišine
+            spoke = true;
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = null;
+            }
+          } else if (spoke && !silenceTimerRef.current) {
+            // nastupila tišina nakon govora — zaustavi za SILENCE_MS
+            silenceTimerRef.current = setTimeout(stopRecording, SILENCE_MS);
+          }
+        }, 150);
+      }
+    } catch {
+      /* ako praćenje glasnoće ne radi, ostaje ručni ⏹ i sigurnosni maxTimer */
+    }
+
+    // Sigurnosna gornja granica (ako auto-stop omane): najduže ~25 s.
     maxTimerRef.current = setTimeout(() => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         try {
@@ -494,69 +548,37 @@ export default function Chat() {
     else startListening();
   }, [startListening, startRecordingCycle]);
 
-  // Glasovni razgovor (Web Speech, Android/desktop): slušanje je KONTINUIRANO —
-  // kad ne slušamo i ne čeka se odgovor, ponovno pokreni slušanje. Stop gasi mod.
+  // Diktat je JEDAN KRUG (nema kontinuiranog "razgovora"): nakon stanke se
+  // pitanje pošalje i glasovni se unos gasi. Ako je pitanje izgovoreno dok je
+  // prethodni odgovor još tekao, pošalji ga čim odgovor završi.
   useEffect(() => {
-    if (useRecorderRef.current) return; // iOS: snimanje je ručno (tap-to-talk), bez auto-ciklusa
-    if (!voiceMode || busy || listening || recognitionRef.current || mediaRecorderRef.current) {
-      return;
-    }
-    const t = window.setTimeout(() => {
-      if (voiceModeRef.current && !recognitionRef.current && !mediaRecorderRef.current) {
-        startCapture();
-      }
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [voiceMode, busy, listening, startCapture]);
-
-  // Kad odgovor završi (busy → false): pošalji pitanje iz reda (izgovoreno usred
-  // odgovora). Usmeni odgovor je u ovoj fazi isključen — bot samo prikazuje
-  // odgovor. Na iOS-u (snimanje, tap-to-talk) jedan je krug, pa nakon odgovora
-  // gasimo glasovni mod; na Web Speech putu slušanje se nastavlja (efekt gore).
-  useEffect(() => {
-    if (busy || !voiceMode) return;
+    if (busy) return;
     if (pendingRef.current) {
       const q = pendingRef.current;
       pendingRef.current = '';
       void sendRef.current(q);
-      return;
     }
-    const list = messagesRef.current;
-    const last = list[list.length - 1];
-    if (last && last.role === 'assistant' && last.content && lastAnsweredRef.current !== last.content) {
-      lastAnsweredRef.current = last.content;
-      if (useRecorderRef.current) {
-        voiceModeRef.current = false;
-        setVoiceMode(false);
-      }
-    }
-  }, [busy, voiceMode]);
+  }, [busy]);
 
   const startVoiceMode = () => {
     if (busy) return;
     setVoiceErr('');
-    // Zapamti trenutačni zadnji odgovor da nakon aktivacije ne ugasimo mod prije
-    // novog odgovora (iOS jedan krug).
-    const list = messagesRef.current;
-    const last = list[list.length - 1];
-    lastAnsweredRef.current = last && last.role === 'assistant' ? last.content : '';
     voiceModeRef.current = true;
     setVoiceMode(true);
     startCapture();
   };
-  const stopVoiceMode = () => {
-    voiceModeRef.current = false;
-    pendingRef.current = '';
-    setVoiceMode(false);
-    setListening(false);
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    try {
-      mediaRecorderRef.current?.stop();
-    } catch {
-      /* ignoriraj */
+  // "Gotovo": zaustavi slušanje i POŠALJI prepoznato/snimljeno (voiceModeRef ostaje
+  // uključen da onend/onstop obave slanje). Ako ništa nije rečeno, tiho završi.
+  const finishVoice = () => {
+    if (useRecorderRef.current) {
+      stopRecording(); // → onstop: prijepis (Whisper) + slanje
+    } else {
+      try {
+        recognitionRef.current?.stop(); // → onend: slanje prepoznatog teksta
+      } catch {
+        /* ignoriraj */
+      }
     }
-    cleanupRecording();
   };
 
   return (
@@ -678,49 +700,39 @@ export default function Chat() {
             }
           }}
           placeholder={
-            listening
-              ? useRecorder
-                ? 'Snimam… kliknite ⏹ za kraj'
-                : 'Slušam… izgovorite pitanje'
-              : 'Postavite pitanje o Gradu Valpovu…'
+            voiceMode
+              ? 'Govorite… sama ću stati nakon stanke'
+              : listening
+                ? 'Prepisujem govor…'
+                : 'Postavite pitanje o Gradu Valpovu…'
           }
           maxLength={2000}
           disabled={busy}
           aria-label="Vaše pitanje"
         />
         {voiceSupported && !voiceMode && (
+          // Diktat: jedan pritisak pokreće govorni unos; tekst se upisuje sam, a
+          // nakon stanke se pitanje pošalje. Nema zasebnog "snimanja".
           <button
             type="button"
             className="chat-mic"
             onClick={startVoiceMode}
-            disabled={busy}
-            aria-label={useRecorder ? 'Snimi pitanje' : 'Pokreni glasovni razgovor'}
-            title={useRecorder ? 'Snimi pitanje' : 'Pokreni glasovni razgovor'}
+            disabled={busy || listening}
+            aria-label="Izgovorite pitanje"
+            title="Izgovorite pitanje"
           >
             🎤
           </button>
         )}
-        {voiceSupported && voiceMode && useRecorder && listening && (
-          // iOS: snima se — klik zaustavlja i šalje
+        {voiceSupported && voiceMode && (
+          // Dok sluša: jasno "Gotovo" — zaustavi i pošalji odmah (inače stane sama).
           <button
             type="button"
             className="chat-mic listening"
-            onClick={stopRecording}
-            aria-label="Zaustavi snimanje i pošalji"
-            title="Zaustavi snimanje i pošalji"
-          >
-            ⏹
-          </button>
-        )}
-        {voiceSupported && voiceMode && !(useRecorder && listening) && (
-          // Web Speech (Android/desktop) ili iOS u tijeku odgovora — klik prekida
-          <button
-            type="button"
-            className="chat-mic listening"
-            onClick={stopVoiceMode}
+            onClick={finishVoice}
             aria-pressed={true}
-            aria-label="Završi glasovni razgovor"
-            title="Završi glasovni razgovor"
+            aria-label="Gotovo — zaustavi i pošalji"
+            title="Gotovo — zaustavi i pošalji"
           >
             ⏹
           </button>
