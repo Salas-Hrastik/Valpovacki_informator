@@ -127,6 +127,17 @@ export const config = {
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
   seedUrls: list('SEED_URLS', SEED_URLS_DEFAULT),
+  // Domene koje se osvježavaju DNEVNO (pon–sub): vijesti (valpovo.hr) i događanja
+  // (Ustanova za kulturne djelatnosti, Turistička zajednica). Nove stranice iz
+  // sitemapa pokupe se odmah; postojeće se ponovno provjeravaju po dailyFreshDays.
+  dailyHosts: list('DAILY_HOSTS', [
+    'valpovo.hr', 'www.valpovo.hr',
+    'ustanova.valpovo.hr',
+    'tz.valpovo.hr',
+  ]),
+  // Prozor svježine za DNEVNI prolaz: stranice provjerene prije <ovoliko dana se
+  // ponovno dohvaćaju (1 = praktički svaki dan), da događanja/vijesti budu ažurni.
+  dailyFreshDays: int('DAILY_FRESH_DAYS', 1),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
