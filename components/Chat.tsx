@@ -22,7 +22,8 @@ interface Message {
   timing?: {
     retrieveMs: number;
     embedMs?: number;
-    dbMs?: number;
+    vecMs?: number;
+    ftsMs?: number;
     ttftMs: number;
     totalMs: number;
   };
@@ -636,8 +637,9 @@ export default function Chat() {
                 // Privremena dijagnostika brzine: dohvat / do prvog tokena / ukupno.
                 <span className="msg-timing" aria-hidden="true">
                   ⏱ dohvat {(m.timing.retrieveMs / 1000).toFixed(1)}s (embed{' '}
-                  {((m.timing.embedMs ?? 0) / 1000).toFixed(1)}s · baza{' '}
-                  {((m.timing.dbMs ?? 0) / 1000).toFixed(1)}s) · prvi token{' '}
+                  {((m.timing.embedMs ?? 0) / 1000).toFixed(1)}s · vektor{' '}
+                  {((m.timing.vecMs ?? 0) / 1000).toFixed(1)}s · FTS{' '}
+                  {((m.timing.ftsMs ?? 0) / 1000).toFixed(1)}s) · prvi token{' '}
                   {(m.timing.ttftMs / 1000).toFixed(1)}s · ukupno{' '}
                   {(m.timing.totalMs / 1000).toFixed(1)}s
                 </span>
