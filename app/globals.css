@@ -243,6 +243,14 @@ body {
 }
 .msg-sources-btn:hover { background: var(--boja-primarna); color: #fff; border-color: var(--boja-primarna); }
 
+/* Privremeni prikaz mjerenja brzine ispod odgovora (uklanja se nakon dijagnoze) */
+.msg-timing {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--boja-tekst-prigusen);
+}
+
 /* Skočni prozor (modal) s izvorima — manjih dimenzija, zatvara se klikom/Esc */
 .sources-modal-backdrop {
   position: fixed;
