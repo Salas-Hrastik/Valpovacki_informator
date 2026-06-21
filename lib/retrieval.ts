@@ -27,6 +27,8 @@ export interface RetrieveOptions {
   scoreThreshold?: number;
   /** Dodatni filtar po dopuštenim domenama (sigurnosna mreža za citate). */
   allowedHosts?: string[];
+  /** Privremena dijagnostika brzine: funkcija puni embedMs (OpenAI) i dbMs (Supabase). */
+  timing?: { embedMs?: number; dbMs?: number };
 }
 
 export async function retrieve(
@@ -47,7 +49,9 @@ export async function retrieve(
       : null;
 
   // 2) Vektorsko pretraživanje (širi skup)
+  const tEmbed0 = Date.now();
   const queryEmbedding = await embedText(query);
+  const tEmbed1 = Date.now();
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
     query_embedding: JSON.stringify(queryEmbedding), // pgvector prima '[...]' literal
     match_count: poolSize,
@@ -67,6 +71,10 @@ export async function retrieve(
         .filter((r) => !vecIds.has(r.chunk_id))
         .map((r) => ({ ...r, score: Math.min(r.score, threshold) }));
     }
+  }
+  if (options.timing) {
+    options.timing.embedMs = tEmbed1 - tEmbed0;
+    options.timing.dbMs = Date.now() - tEmbed1; // vektor + FTS (paralelno) + spajanje
   }
 
   // 3) Skup kandidata: ispleti vektor+FTS (FTS zajamčeno zastupljen), filtriraj

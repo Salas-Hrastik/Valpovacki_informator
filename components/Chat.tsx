@@ -19,7 +19,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: Source[];
-  timing?: { retrieveMs: number; ttftMs: number; totalMs: number };
+  timing?: {
+    retrieveMs: number;
+    embedMs?: number;
+    dbMs?: number;
+    ttftMs: number;
+    totalMs: number;
+  };
 }
 
 // Brzi prijedlozi pitanja — prikazuju se na početku da građanin odmah vidi
@@ -629,8 +635,11 @@ export default function Chat() {
               {m.timing && (
                 // Privremena dijagnostika brzine: dohvat / do prvog tokena / ukupno.
                 <span className="msg-timing" aria-hidden="true">
-                  ⏱ dohvat {(m.timing.retrieveMs / 1000).toFixed(1)}s · prvi token{' '}
-                  {(m.timing.ttftMs / 1000).toFixed(1)}s · ukupno {(m.timing.totalMs / 1000).toFixed(1)}s
+                  ⏱ dohvat {(m.timing.retrieveMs / 1000).toFixed(1)}s (embed{' '}
+                  {((m.timing.embedMs ?? 0) / 1000).toFixed(1)}s · baza{' '}
+                  {((m.timing.dbMs ?? 0) / 1000).toFixed(1)}s) · prvi token{' '}
+                  {(m.timing.ttftMs / 1000).toFixed(1)}s · ukupno{' '}
+                  {(m.timing.totalMs / 1000).toFixed(1)}s
                 </span>
               )}
               {m.role === 'assistant' && i > 0 && m.content && !(busy && i === messages.length - 1) && (

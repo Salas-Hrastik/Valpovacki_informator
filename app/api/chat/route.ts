@@ -79,7 +79,8 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     // 1) Retrieval (embedding upita + pgvector + opcionalni FTS)
-    const chunks = await retrieve(question);
+    const retrieveTiming: { embedMs?: number; dbMs?: number } = {};
+    const chunks = await retrieve(question, { timing: retrieveTiming });
     const sources = uniqueSources(chunks);
     const retrieveMs = Date.now() - startedAt; // privremena dijagnostika brzine
 
@@ -117,7 +118,16 @@ export async function POST(req: Request): Promise<Response> {
           await stream.finalMessage();
           controller.enqueue(sse({ type: 'sources', sources }));
           controller.enqueue(
-            sse({ type: 'done', timing: { retrieveMs, ttftMs, totalMs: Date.now() - startedAt } }),
+            sse({
+              type: 'done',
+              timing: {
+                retrieveMs,
+                embedMs: retrieveTiming.embedMs ?? 0,
+                dbMs: retrieveTiming.dbMs ?? 0,
+                ttftMs,
+                totalMs: Date.now() - startedAt,
+              },
+            }),
           );
         } catch (err) {
           logApiError('[chat] Greška tijekom streama', err);
