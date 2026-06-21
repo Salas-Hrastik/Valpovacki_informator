@@ -30,6 +30,9 @@ const ALLOWED_HOSTS_DEFAULT = [
   'udrugamivalpovo.hr', 'www.udrugamivalpovo.hr',
   'zsuval.com', 'www.zsuval.com',
   'dzobz.hr', 'www.dzobz.hr',
+  // Župni ured Valpovo (Wix stranica) — NAPOMENA: Wix sadržaj se renderira
+  // JavaScriptom, pa statički dohvat može vratiti malo teksta (vidi se nakon ingestije).
+  'zupavalpo.wixsite.com',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -44,6 +47,7 @@ const SITEMAP_URLS_DEFAULT = [
   'https://www.dvd-valpovo.hr/sitemap.xml',
   'https://udrugamivalpovo.hr/sitemap.xml',
   'https://www.zsuval.com/sitemap.xml',
+  'https://zupavalpo.wixsite.com/zupa-valpovo/sitemap.xml',
   'https://valpovo.hr/sitemap.xml',
 ];
 
@@ -60,6 +64,9 @@ const SEED_URLS_DEFAULT = [
   'https://udrugamivalpovo.hr/',
   'https://www.zsuval.com/',
   'https://www.dzobz.hr/obiteljska_grad_valpovo/',
+  // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
+  'https://zupavalpo.wixsite.com/zupa-valpovo',
+  'https://zupavalpo.wixsite.com/zupa-valpovo/%C5%BEupni-ured',
   'https://valpovo.hr/',
 ];
 
@@ -134,6 +141,9 @@ export const config = {
     'valpovo.hr', 'www.valpovo.hr',
     'ustanova.valpovo.hr',
     'tz.valpovo.hr',
+    // Župni ured (Wix): uključen u dnevni prolaz da se nove stranice pokupe brzo
+    // (sutrašnjim cronom), bez čekanja nedjeljnog velikog prolaza.
+    'zupavalpo.wixsite.com',
   ]),
   // Prozor svježine za DNEVNI prolaz: stranice provjerene prije <ovoliko dana se
   // ponovno dohvaćaju (1 = praktički svaki dan), da događanja/vijesti budu ažurni.
