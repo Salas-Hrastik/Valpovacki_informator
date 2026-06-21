@@ -78,11 +78,9 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    // 1) Retrieval (embedding upita + pgvector + opcionalni FTS)
-    const retrieveTiming: { embedMs?: number; vecMs?: number; ftsMs?: number; dbMs?: number } = {};
-    const chunks = await retrieve(question, { timing: retrieveTiming });
+    // 1) Retrieval (embedding upita + pgvector + opcionalni FTS rezerva)
+    const chunks = await retrieve(question);
     const sources = uniqueSources(chunks);
-    const retrieveMs = Date.now() - startedAt; // privremena dijagnostika brzine
 
     // 2) Poruke za Claude: povijest razgovora + zadnje pitanje s kontekstom
     const history = messages.slice(0, -1).slice(-MAX_HISTORY_TURNS);
@@ -106,30 +104,16 @@ export async function POST(req: Request): Promise<Response> {
     const readable = new ReadableStream<Uint8Array>({
       async start(controller) {
         let answer = '';
-        let ttftMs = 0; // vrijeme do prvog tokena (privremena dijagnostika)
         try {
           for await (const event of stream) {
             if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              if (!ttftMs) ttftMs = Date.now() - startedAt;
               answer += event.delta.text;
               controller.enqueue(sse({ type: 'delta', text: event.delta.text }));
             }
           }
           await stream.finalMessage();
           controller.enqueue(sse({ type: 'sources', sources }));
-          controller.enqueue(
-            sse({
-              type: 'done',
-              timing: {
-                retrieveMs,
-                embedMs: retrieveTiming.embedMs ?? 0,
-                vecMs: retrieveTiming.vecMs ?? 0,
-                ftsMs: retrieveTiming.ftsMs ?? 0,
-                ttftMs,
-                totalMs: Date.now() - startedAt,
-              },
-            }),
-          );
+          controller.enqueue(sse({ type: 'done' }));
         } catch (err) {
           logApiError('[chat] Greška tijekom streama', err);
           controller.enqueue(sse({ type: 'error', error: streamErrorMessage(err) }));

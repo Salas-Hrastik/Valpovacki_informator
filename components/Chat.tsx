@@ -19,14 +19,6 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: Source[];
-  timing?: {
-    retrieveMs: number;
-    embedMs?: number;
-    vecMs?: number;
-    ftsMs?: number;
-    ttftMs: number;
-    totalMs: number;
-  };
 }
 
 // Brzi prijedlozi pitanja — prikazuju se na početku da građanin odmah vidi
@@ -251,8 +243,6 @@ export default function Chat() {
             scrollDown();
           } else if (data.type === 'sources') {
             apply((m) => ({ ...m, sources: data.sources }));
-          } else if (data.type === 'done') {
-            if (data.timing) apply((m) => ({ ...m, timing: data.timing }));
           } else if (data.type === 'error') {
             apply((m) => ({ ...m, content: m.content || data.error }));
           }
@@ -632,17 +622,6 @@ export default function Chat() {
                 >
                   Izvori ({m.sources.length})
                 </button>
-              )}
-              {m.timing && (
-                // Privremena dijagnostika brzine: dohvat / do prvog tokena / ukupno.
-                <span className="msg-timing" aria-hidden="true">
-                  ⏱ dohvat {(m.timing.retrieveMs / 1000).toFixed(1)}s (embed{' '}
-                  {((m.timing.embedMs ?? 0) / 1000).toFixed(1)}s · vektor{' '}
-                  {((m.timing.vecMs ?? 0) / 1000).toFixed(1)}s · FTS{' '}
-                  {((m.timing.ftsMs ?? 0) / 1000).toFixed(1)}s) · prvi token{' '}
-                  {(m.timing.ttftMs / 1000).toFixed(1)}s · ukupno{' '}
-                  {(m.timing.totalMs / 1000).toFixed(1)}s
-                </span>
               )}
               {m.role === 'assistant' && i > 0 && m.content && !(busy && i === messages.length - 1) && (
                 <button
