@@ -30,6 +30,7 @@ const ALLOWED_HOSTS_DEFAULT = [
   'udrugamivalpovo.hr', 'www.udrugamivalpovo.hr',
   'zsuval.com', 'www.zsuval.com',
   'dzobz.hr', 'www.dzobz.hr',
+  'crvenikrizvalpovo.hr', 'www.crvenikrizvalpovo.hr',
   // Župni ured Valpovo (Wix stranica) — NAPOMENA: Wix sadržaj se renderira
   // JavaScriptom, pa statički dohvat može vratiti malo teksta (vidi se nakon ingestije).
   'zupavalpo.wixsite.com',
@@ -47,6 +48,8 @@ const SITEMAP_URLS_DEFAULT = [
   'https://www.dvd-valpovo.hr/sitemap.xml',
   'https://udrugamivalpovo.hr/sitemap.xml',
   'https://www.zsuval.com/sitemap.xml',
+  'https://crvenikrizvalpovo.hr/sitemap.xml',
+  'https://crvenikrizvalpovo.hr/wp-sitemap.xml',
   'https://zupavalpo.wixsite.com/zupa-valpovo/sitemap.xml',
   'https://valpovo.hr/sitemap.xml',
 ];
@@ -64,6 +67,7 @@ const SEED_URLS_DEFAULT = [
   'https://udrugamivalpovo.hr/',
   'https://www.zsuval.com/',
   'https://www.dzobz.hr/obiteljska_grad_valpovo/',
+  'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
   'https://zupavalpo.wixsite.com/zupa-valpovo/%C5%BEupni-ured',
@@ -141,6 +145,8 @@ export const config = {
     'valpovo.hr', 'www.valpovo.hr',
     'ustanova.valpovo.hr',
     'tz.valpovo.hr',
+    // Crveni križ Valpovo — termini darivanja krvi i akcije su vremenski osjetljivi
+    'crvenikrizvalpovo.hr', 'www.crvenikrizvalpovo.hr',
     // Župni ured (Wix): uključen u dnevni prolaz da se nove stranice pokupe brzo
     // (sutrašnjim cronom), bez čekanja nedjeljnog velikog prolaza.
     'zupavalpo.wixsite.com',
