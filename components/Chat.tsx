@@ -558,6 +558,11 @@ export default function Chat() {
       >
         {messages.map((m, i) => (
           <div key={i} className={`msg msg-${m.role}`}>
+            {m.role === 'assistant' && (
+              <span className="msg-avatar" aria-hidden="true" title="Marica">
+                M
+              </span>
+            )}
             <div className="msg-bubble">
               {m.content ? (
                 <div className="msg-text">
@@ -607,12 +612,19 @@ export default function Chat() {
         ))}
 
         {messages.length === 0 && !busy && (
-          <div className="chat-suggestions" aria-label="Prijedlozi pitanja">
-            {PRIJEDLOZI.map((q) => (
-              <button key={q} type="button" className="chip" onClick={() => void send(q)}>
-                {q}
-              </button>
-            ))}
+          <div className="chat-empty">
+            <span className="chat-empty-avatar" aria-hidden="true">M</span>
+            <p className="chat-empty-hint">
+              Bok, ja sam <strong>Marica</strong>. Kako vam mogu pomoći? Odaberite pitanje ili
+              upišite svoje.
+            </p>
+            <div className="chat-suggestions" aria-label="Prijedlozi pitanja">
+              {PRIJEDLOZI.map((q) => (
+                <button key={q} type="button" className="chip" onClick={() => void send(q)}>
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

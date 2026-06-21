@@ -99,7 +99,44 @@ body {
 
 .msg { display: flex; }
 .msg-user { justify-content: flex-end; }
-.msg-assistant { justify-content: flex-start; }
+.msg-assistant { justify-content: flex-start; align-items: flex-start; gap: 8px; }
+
+/* Avatar asistentice (Marica) uz odgovore — kao kod poznatih chatbotova */
+.msg-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+/* Prazno stanje (prije prvog pitanja): pozdrav Marice + prijedlozi */
+.chat-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 4px; }
+.chat-empty-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.35rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+.chat-empty-hint { margin: 0; font-size: 1.04rem; line-height: 1.5; color: var(--boja-tekst); }
+.chat-empty-hint strong { color: var(--boja-primarna); }
 
 /* Alatna traka iznad razgovora (Novi razgovor) */
 .chat-toolbar {
@@ -259,9 +296,9 @@ body {
 .chat-input textarea {
   flex: 1;
   min-width: 0; /* dopušta skupljanje na uskim ekranima (bez prelijevanja) */
-  padding: 10px 12px;
+  padding: 11px 14px;
   border: 1px solid var(--boja-rub);
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.4;
@@ -276,11 +313,11 @@ body {
 }
 
 .chat-input button {
-  padding: 10px 18px;
+  padding: 11px 20px;
   background: var(--boja-primarna);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 999px; /* pill — moderniji izgled */
   font-size: 1rem;
   cursor: pointer;
   align-self: flex-end;
@@ -290,14 +327,20 @@ body {
 .chat-input button:hover:not(:disabled) { background: var(--boja-primarna-tamna); }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
 
-/* Gumb mikrofona (glasovni unos pitanja) — drukčiji od "Pošalji" */
+/* Gumb mikrofona (glasovni unos pitanja) — okrugli, drukčiji od "Pošalji" */
 .chat-input .chat-mic {
   background: transparent;
   color: var(--boja-primarna);
   border: 1px solid var(--boja-rub);
-  padding: 9px 13px;
-  font-size: 1.15rem;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .chat-input .chat-mic:hover:not(:disabled) { background: var(--boja-pozadina-blago); }
 .chat-input .chat-mic.listening {
@@ -372,8 +415,8 @@ textarea:focus-visible {
 
   .chat-input { padding: 8px; gap: 6px; }
   .chat-input textarea { font-size: 16px; } /* 16px sprječava zoom na iOS-u */
-  .chat-input button { padding: 10px 12px; font-size: 0.98rem; }
-  .chat-input .chat-mic { padding: 9px 10px; }
+  .chat-input button { padding: 11px 16px; font-size: 0.98rem; }
+  .chat-input .chat-mic { width: 42px; height: 42px; padding: 0; }
 
   .chip { font-size: 0.94rem; padding: 8px 13px; } /* dovoljno velik tap-cilj */
 }
