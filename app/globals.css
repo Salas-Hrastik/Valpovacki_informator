@@ -135,7 +135,7 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   user-select: none;
 }
-.chat-empty-hint { margin: 0; font-size: 1.04rem; line-height: 1.5; color: var(--boja-tekst); }
+.chat-empty-hint { margin: 0; font-size: 1.08rem; line-height: 1.5; color: var(--boja-tekst); }
 .chat-empty-hint strong { color: var(--boja-primarna); }
 
 /* Alatna traka iznad razgovora (Novi razgovor) */
@@ -193,7 +193,7 @@ body {
   border-radius: 12px;
   white-space: pre-wrap;
   line-height: 1.5;
-  font-size: 1.02rem; /* čitljivo i na manjim ekranima */
+  font-size: 1.06rem; /* čitljivo i na manjim ekranima */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); /* blago zasjenjena podloga odgovora */
 }
 
@@ -487,15 +487,17 @@ textarea:focus-visible {
 
   .chat-toolbar { padding: 6px 10px; }
   .chat-messages { padding: 12px; gap: 10px; }
-  .msg-bubble { max-width: 92%; font-size: 1rem; }
+  .msg-bubble { max-width: 92%; font-size: 1.06rem; }
   .msg-avatar { width: 30px; height: 30px; font-size: 0.9rem; }
+  .chat-empty-hint { font-size: 1.06rem; }
 
   .chat-input { padding: 8px; gap: 6px; }
   .chat-input textarea { font-size: 16px; } /* 16px sprječava zoom na iOS-u */
   .chat-input button { padding: 11px 16px; font-size: 0.98rem; }
   .chat-input .chat-mic { width: 42px; height: 42px; padding: 0; }
 
-  .chat-disclaimer { font-size: 0.74rem; }
+  /* Napomena zauzima što manje prostora na telefonu: sitnije i zbijenije */
+  .chat-disclaimer { font-size: 0.66rem; line-height: 1.28; padding: 4px 10px 6px; }
   .chip { font-size: 0.94rem; padding: 8px 13px; } /* dovoljno velik tap-cilj */
 
   /* Skočni preglednik poveznice koristi gotovo cijeli ekran na telefonu */
