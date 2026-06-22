@@ -147,6 +147,8 @@ export const config = {
     'tz.valpovo.hr',
     // Crveni križ Valpovo — termini darivanja krvi i akcije su vremenski osjetljivi
     'crvenikrizvalpovo.hr', 'www.crvenikrizvalpovo.hr',
+    // Savez sportskih udruga Valpova — rasporedi/natjecanja se često mijenjaju
+    'zsuval.com', 'www.zsuval.com',
     // Župni ured (Wix): uključen u dnevni prolaz da se nove stranice pokupe brzo
     // (sutrašnjim cronom), bez čekanja nedjeljnog velikog prolaza.
     'zupavalpo.wixsite.com',
