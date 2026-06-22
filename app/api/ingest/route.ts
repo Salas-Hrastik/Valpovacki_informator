@@ -46,15 +46,22 @@ async function handle(req: Request): Promise<Response> {
 
   // scope=daily (ili homepage) → dnevno osvježavanje vijesti + događanja (uži skup
   // domena, kratki prozor svježine); inače veliko ažuriranje svih izvora (nedjeljom).
-  const scope = new URL(req.url).searchParams.get('scope');
+  const params = new URL(req.url).searchParams;
+  const scope = params.get('scope');
   const isDaily = scope === 'daily' || scope === 'homepage';
-  const onlyHosts = isDaily ? config.dailyHosts : undefined;
-  const freshDays = isDaily ? config.dailyFreshDays : undefined;
+  // Ciljano ručno pokretanje: ?hosts=domena1,domena2 obrađuje SAMO te domene i
+  // forsira osvježavanje (freshDays=0) — brzo povlačenje pojedinih novih izvora.
+  const hostsParam = params.get('hosts');
+  const explicitHosts = hostsParam
+    ? hostsParam.split(',').map((s) => s.trim()).filter(Boolean)
+    : null;
+  const onlyHosts = explicitHosts ?? (isDaily ? config.dailyHosts : undefined);
+  const freshDays = explicitHosts ? 0 : isDaily ? config.dailyFreshDays : undefined;
 
   // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
   const stats = await runIngest({ deadlineMs: 280_000, onlyHosts, freshDays });
 
-  return new Response(JSON.stringify({ ok: true, scope: scope ?? 'full', stats }), {
+  return new Response(JSON.stringify({ ok: true, scope: scope ?? (explicitHosts ? 'hosts' : 'full'), stats }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }
