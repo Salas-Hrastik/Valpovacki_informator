@@ -30,7 +30,10 @@ function authorized(req: Request): boolean {
   if (!secret) return false; // bez tajne ne dopuštamo pokretanje
   const bearer = req.headers.get('authorization');
   const custom = req.headers.get('x-ingest-secret');
-  return bearer === `Bearer ${secret}` || custom === secret;
+  // Ručno pokretanje iz preglednika: dopuštamo i ?key=<CRON_SECRET> u adresi, da
+  // administrator može pokrenuti ingest jednostavnim otvaranjem poveznice.
+  const key = new URL(req.url).searchParams.get('key');
+  return bearer === `Bearer ${secret}` || custom === secret || key === secret;
 }
 
 async function handle(req: Request): Promise<Response> {
