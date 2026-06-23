@@ -128,11 +128,11 @@ export const config = {
   ragFtsMinVec: int('RAG_FTS_MIN_VEC', 6),
   ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
   // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
-  // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika).
-  // PREMA ZADANOM ISKLJUČEN radi brzine (dodatni LLM-poziv prije odgovora znatno
-  // usporava prvi token); uključuje se s RAG_RERANK=1 ako zatreba veća točnost.
-  ragRerank: process.env.RAG_RERANK === '1',
-  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 24),
+  // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika), pa
+  // npr. stranica događanja ne ostane "zatrpana" zapisnicima sjednica. UKLJUČEN
+  // prema zadanom (mali dodatni trošak ~1 s); isključuje se s RAG_RERANK=0.
+  ragRerank: process.env.RAG_RERANK !== '0',
+  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 40),
   rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
