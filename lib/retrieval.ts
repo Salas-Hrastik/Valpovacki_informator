@@ -88,6 +88,21 @@ export async function retrieve(
     k++;
   }
 
+  // 3b) Upiti po SVJEŽINI ("najnovije vijesti", "današnja događanja"…): semantička
+  // sličnost tu ne pomaže (generičke riječi pogađaju stare glasnike/dokumente), pa
+  // dodatno dovlačimo NAJNOVIJE dokumente (po datumu objave) iz vijesti/događanja
+  // izvora i stavljamo ih NAPRIJED — rerank ih dalje presloži po relevantnosti.
+  if (isRecencyQuery(query)) {
+    try {
+      const recent = await fetchRecentChunks(sb, config.dailyHosts, topK + 4, threshold);
+      const have = new Set(candidates.map((c) => c.chunk_id));
+      const fresh = recent.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+      candidates.unshift(...fresh);
+    } catch (e) {
+      console.error('[retrieval] dohvat najnovijih dokumenata nije uspio:', e);
+    }
+  }
+
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
@@ -120,6 +135,54 @@ function lexicalQuery(query: string): string {
     .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
     .filter((w) => w.length >= 4);
   return words.length > 0 ? words.join(' ') : query;
+}
+
+// Prepoznavanje upita "po svježini" (vijesti/događanja/danas…), za koje uz vektorsku
+// pretragu dovlačimo i najnovije dokumente po datumu objave.
+const RECENCY_PATTERNS = [
+  'najnovij', 'novost', 'vijest', 'aktualn', 'događanj', 'događaj', 'zbivanj',
+  'manifestacij', 'program', 'obavijest', 'najav', 'nadolaz', 'predstojeć', 'uskoro',
+  'danas', 'sutra', 'ovaj tjedan', 'ovog tjedna', 'ovaj mjesec', 'ovih dana', 'vikend',
+];
+function isRecencyQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return RECENCY_PATTERNS.some((p) => q.includes(p));
+}
+
+/** Najnoviji dokumenti (po datumu objave) iz zadanih domena → po jedan (prvi) isječak. */
+async function fetchRecentChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  hosts: string[],
+  limit: number,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const { data: docs, error } = await sb
+    .from('dokumenti')
+    .select('id, title, url, fetched_at, published_at')
+    .in('source', hosts)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error || !docs || docs.length === 0) return [];
+
+  const ids = docs.map((d: { id: string }) => d.id);
+  const { data: parts, error: e2 } = await sb
+    .from('dijelovi')
+    .select('id, document_id, text, chunk_index')
+    .in('document_id', ids)
+    .order('chunk_index', { ascending: true });
+  if (e2 || !parts) return [];
+
+  const firstByDoc = new Map<string, { id: string; text: string }>();
+  for (const p of parts as { id: string; document_id: string; text: string }[]) {
+    if (!firstByDoc.has(p.document_id)) firstByDoc.set(p.document_id, { id: p.id, text: p.text });
+  }
+
+  const out: RetrievedChunk[] = [];
+  for (const d of docs as { id: string; title: string; url: string; fetched_at: string }[]) {
+    const p = firstByDoc.get(d.id);
+    if (p) out.push({ chunk_id: p.id, text: p.text, title: d.title, url: d.url, fetched_at: d.fetched_at, score });
+  }
+  return out;
 }
 
 /** Jedinstveni popis izvora (za prikaz citata ispod odgovora). */
