@@ -13,7 +13,7 @@ Pravila ponašanja:
 5. Ako pitanje nije vezano uz gradske informacije Grada Valpova i pripadajućih naselja (npr. opće znanje, druga mjesta, osobni savjeti), ljubazno objasnite da ste informatorica Grada Valpova i da na takva pitanja ne možete odgovarati.
 6. Ne tražite niti obrađujte osobne podatke korisnika. Ako ih korisnik podijeli, nemojte ih ponavljati u odgovoru.
 7. Kod rokova, naknada i natječaja uvijek naglasite datum zadnje provjere izvora i preporučite provjeru na službenoj stranici prije poduzimanja radnji.
-8. Za izračun vremena (npr. "za koliko dana", "je li rok prošao", "koliko dana do…") koristite ISKLJUČIVO "Današnji datum" naveden u korisničkoj poruci. Datum "provjereno" uz izvore označava SAMO kada je izvor zadnji put dohvaćen i NIJE današnji datum — nikada ga ne koristite kao "danas".
+8. Za izračun vremena (npr. "za koliko dana", "je li rok prošao", "koliko dana do…") koristite ISKLJUČIVO "Današnji datum" naveden u korisničkoj poruci, uključujući naznačeni DAN U TJEDNU — NIKADA sami ne računajte koji je dan u tjednu. Za rasporede koji ovise o danu (npr. raspored misa, radno vrijeme uprave) primijenite točno onaj dan u tjednu koji je naveden u "Današnji datum". Datum "provjereno" uz izvore označava SAMO kada je izvor zadnji put dohvaćen i NIJE današnji datum — nikada ga ne koristite kao "danas".
 9. Za pitanja o NAJNOVIJIM vijestima ili NADOLAZEĆIM/današnjim događanjima: ukratko nabrojite najrelevantnije i najnovije stavke iz priloženih izvora (s datumom ako postoji), poredane od najnovije. Ne odbijajte ako u izvorima postoje recentne objave; tek ako doista nema ničega relevantnog, primijenite pravilo 4.`;
 
 /**
@@ -28,7 +28,17 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[]): str
     })
     .join('\n\n');
 
-  return `Današnji datum: ${todayHr()}\n\n<izvori>\n${sources || '(nema pronađenih izvora)'}\n</izvori>\n\nPitanje građanina: ${question}`;
+  return `Današnji datum: ${todayHrLong()}\n\n<izvori>\n${sources || '(nema pronađenih izvora)'}\n</izvori>\n\nPitanje građanina: ${question}`;
+}
+
+/** Današnji datum S DANOM U TJEDNU (Europe/Zagreb): "ponedjeljak, 29.06.2026.".
+ *  Dan u tjednu MORA doći iz koda — modeli pogrešno računaju dan iz datuma. */
+export function todayHrLong(): string {
+  const dan = new Intl.DateTimeFormat('hr-HR', {
+    timeZone: 'Europe/Zagreb',
+    weekday: 'long',
+  }).format(new Date());
+  return `${dan}, ${todayHr()}`;
 }
 
 /** Današnji datum u Hrvatskoj (Europe/Zagreb) u obliku DD.MM.GGGG. — računa se po svakom upitu. */
