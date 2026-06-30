@@ -149,6 +149,8 @@ export const config = {
     'crvenikrizvalpovo.hr', 'www.crvenikrizvalpovo.hr',
     // Savez sportskih udruga Valpova — rasporedi/natjecanja se često mijenjaju
     'zsuval.com', 'www.zsuval.com',
+    // Dom zdravlja (obiteljska medicina Valpovo) — važni i promjenjivi podaci (ordinacije, obavijesti)
+    'dzobz.hr', 'www.dzobz.hr',
     // Župni ured (Wix): uključen u dnevni prolaz da se nove stranice pokupe brzo
     // (sutrašnjim cronom), bez čekanja nedjeljnog velikog prolaza.
     'zupavalpo.wixsite.com',
