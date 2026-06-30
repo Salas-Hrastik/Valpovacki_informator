@@ -162,6 +162,9 @@ export const config = {
   // Prozor svježine za DNEVNI prolaz: stranice provjerene prije <ovoliko dana se
   // ponovno dohvaćaju (1 = praktički svaki dan), da događanja/vijesti budu ažurni.
   dailyFreshDays: int('DAILY_FRESH_DAYS', 1),
+  // Domene Doma zdravlja — za zdravstvene upite ("ordinacije/ambulante") ubacuju se
+  // sve njihove (valpovačke) stranice u izbor da model može nabrojati ordinacije.
+  healthHosts: list('HEALTH_HOSTS', ['dzobz.hr', 'www.dzobz.hr']),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
   // Filtri po domeni: za navedene domene uzimamo SAMO URL-ove koji sadrže neki od
