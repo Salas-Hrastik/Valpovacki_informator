@@ -27,7 +27,7 @@ interface Message {
 const PRIJEDLOZI = [
   'Koje je radno vrijeme gradske uprave?',
   'Koji su aktualni natječaji i javni pozivi?',
-  'Koja se događanja održavaju u Valpovu?',
+  'Koji su kontakti gradske uprave?',
 ];
 
 // Minimalni tip za Web Speech API (nije u standardnim TS lib tipovima).
