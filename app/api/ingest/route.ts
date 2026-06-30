@@ -2,11 +2,10 @@
  * GET/POST /api/ingest — pokretanje ingestije (Vercel Cron).
  *
  * Raspored (vercel.json):
- *  - Svaki dan (pon–sub) 03:00 UTC: ?scope=daily — brzo dnevno osvježavanje
- *    vijesti (valpovo.hr) i DOGAĐANJA (ustanova.valpovo.hr, tz.valpovo.hr), gdje
- *    se sadržaj stalno mijenja. Kratki prozor svježine (dailyFreshDays) osigurava
- *    da se te stranice uistinu osvježe svaki dan.
- *  - Nedjeljom 02:00 UTC: bez parametra — veliko ažuriranje SVIH izvora.
+ *  - Svaki dan (pon–sub) 03:00 UTC: ?scope=daily — dnevno osvježavanje SVIH
+ *    izvora o Valpovu uz kratak prozor svježine (dailyFreshDays). Novi sadržaj
+ *    ima prioritet; veliki se korpus osvježava rotacijom kroz uzastopna pokretanja.
+ *  - Nedjeljom 02:00 UTC: bez parametra — veliki prolaz svih izvora (rezerva).
  *
  * Autorizacija:
  *  - Vercel Cron šalje zaglavlje "Authorization: Bearer <CRON_SECRET>" kada je
@@ -44,18 +43,20 @@ async function handle(req: Request): Promise<Response> {
     });
   }
 
-  // scope=daily (ili homepage) → dnevno osvježavanje vijesti + događanja (uži skup
-  // domena, kratki prozor svježine); inače veliko ažuriranje svih izvora (nedjeljom).
+  // scope=daily (ili homepage) → DNEVNO osvježavanje SVIH izvora o Valpovu uz
+  // kratak prozor svježine (dailyFreshDays); inače (nedjeljom) veliki prolaz svih
+  // izvora s uobičajenim prozorom. Novi sadržaj ima prioritet, a veliki se korpus
+  // osvježava rotacijom kroz uzastopna pokretanja.
   const params = new URL(req.url).searchParams;
   const scope = params.get('scope');
   const isDaily = scope === 'daily' || scope === 'homepage';
   // Ciljano ručno pokretanje: ?hosts=domena1,domena2 obrađuje SAMO te domene i
-  // forsira osvježavanje (freshDays=0) — brzo povlačenje pojedinih novih izvora.
+  // forsira osvježavanje (freshDays=0) — brzo povlačenje pojedinih izvora.
   const hostsParam = params.get('hosts');
   const explicitHosts = hostsParam
     ? hostsParam.split(',').map((s) => s.trim()).filter(Boolean)
     : null;
-  const onlyHosts = explicitHosts ?? (isDaily ? config.dailyHosts : undefined);
+  const onlyHosts = explicitHosts ?? undefined; // dnevno i nedjeljno = SVI izvori
   const freshDays = explicitHosts ? 0 : isDaily ? config.dailyFreshDays : undefined;
 
   // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
