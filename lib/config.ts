@@ -70,6 +70,7 @@ const SEED_URLS_DEFAULT = [
   'https://udrugamivalpovo.hr/',
   'https://www.zsuval.com/',
   'https://www.dzobz.hr/obiteljska_grad_valpovo/',
+  'https://www.dzobz.hr/ginekologija_grad_valpovo-2/',
   'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
