@@ -48,6 +48,9 @@ const SITEMAP_URLS_DEFAULT = [
   'https://www.dvd-valpovo.hr/sitemap.xml',
   'https://udrugamivalpovo.hr/sitemap.xml',
   'https://www.zsuval.com/sitemap.xml',
+  // Dom zdravlja (županijski) — sitemap; filtrira se po "valpovo" (hostIncludeFilters)
+  'https://www.dzobz.hr/sitemap.xml',
+  'https://www.dzobz.hr/wp-sitemap.xml',
   'https://crvenikrizvalpovo.hr/sitemap.xml',
   'https://crvenikrizvalpovo.hr/wp-sitemap.xml',
   'https://zupavalpo.wixsite.com/zupa-valpovo/sitemap.xml',
@@ -160,6 +163,12 @@ export const config = {
   dailyFreshDays: int('DAILY_FRESH_DAYS', 1),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
+  // Filtri po domeni: za navedene domene uzimamo SAMO URL-ove koji sadrže neki od
+  // podnizova. Npr. dzobz.hr (županijski Dom zdravlja) → samo valpovačke ambulante.
+  hostIncludeFilters: {
+    'dzobz.hr': ['valpovo'],
+    'www.dzobz.hr': ['valpovo'],
+  } as Record<string, string[]>,
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),
   // Pauza između dohvata. Dohvat je sekvencijalan i izmiješan po raznim domenama,

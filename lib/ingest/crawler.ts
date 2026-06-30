@@ -23,6 +23,27 @@ export function isAllowedHost(url: string, hosts: string[] = config.allowedHosts
 }
 
 /**
+ * Filtar po domeni: za domene navedene u config.hostIncludeFilters zadržavamo SAMO
+ * URL-ove koji sadrže barem jedan zadani podniz (npr. dzobz.hr → "valpovo", da iz
+ * županijskog Doma zdravlja uzmemo isključivo valpovačke ambulante). Ostale domene
+ * nemaju ograničenje.
+ */
+export function passesHostInclude(
+  url: string,
+  filters: Record<string, string[]> = config.hostIncludeFilters,
+): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const subs = filters[host];
+    if (!subs || subs.length === 0) return true;
+    const u = url.toLowerCase();
+    return subs.some((s) => u.includes(s.toLowerCase()));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Je li URL bezvrijedan za indeksiranje? Preskačemo WordPress arhive/feedove i
  * medijske datoteke (osim PDF-a) prema config.excludeUrlPatterns. PDF se uvijek
  * propušta jer iz njega izvlačimo tekst.
@@ -77,7 +98,9 @@ export async function gatherUrlsDetailed(opts: { applyExclude?: boolean } = {}):
   // applyExclude=false vraća SIROVE URL-ove (bez filtra) — koristi se za analizu
   // korpusa (npm run ingest -- --analyze). U normalnoj ingestiji filtar je uključen.
   const applyExclude = opts.applyExclude !== false;
-  const keep = (u: string) => !applyExclude || !isExcludedUrl(u);
+  // Uvijek primijeni filtar po domeni (npr. dzobz.hr → samo "valpovo"); exclude-uzorci
+  // se primjenjuju samo u normalnoj ingestiji.
+  const keep = (u: string) => (!applyExclude || !isExcludedUrl(u)) && passesHostInclude(u);
   const urls = new Set<string>();
   const failedSitemaps: string[] = [];
 
