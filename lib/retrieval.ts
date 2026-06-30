@@ -103,6 +103,20 @@ export async function retrieve(
     }
   }
 
+  // 3c) Zdravstveni upiti ("ordinacije", "ambulante", "dom zdravlja"…): opće/nejasno
+  // pitanje ne mapira se na pojedine stranice ambulanti, pa ubacujemo SVE stranice
+  // Doma zdravlja (Valpovo) u izbor — rerank ih dalje presloži.
+  if (isHealthQuery(query)) {
+    try {
+      const health = await fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold);
+      const have = new Set(candidates.map((c) => c.chunk_id));
+      const fresh = health.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+      candidates.unshift(...fresh);
+    } catch (e) {
+      console.error('[retrieval] dohvat zdravstvenih stranica nije uspio:', e);
+    }
+  }
+
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
@@ -147,6 +161,18 @@ const RECENCY_PATTERNS = [
 function isRecencyQuery(query: string): boolean {
   const q = query.toLowerCase();
   return RECENCY_PATTERNS.some((p) => q.includes(p));
+}
+
+// Prepoznavanje ZDRAVSTVENIH upita (ordinacije/ambulante/Dom zdravlja), za koje
+// ubacujemo sve stranice Doma zdravlja za Valpovo (radno vrijeme, liječnici…).
+const HEALTH_PATTERNS = [
+  'ordinacij', 'ambulant', 'dom zdravlja', 'liječnik', 'lijecnik', 'doktor', 'dr. med',
+  'ginekolog', 'pedijat', 'stomatolog', 'zubar', 'obiteljsk', 'opća medicin', 'opca medicin',
+  'medicin', 'zdravstven', 'hitna',
+];
+function isHealthQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return HEALTH_PATTERNS.some((p) => q.includes(p));
 }
 
 /** Najnoviji dokumenti (po datumu objave) iz zadanih domena → po jedan (prvi) isječak. */
