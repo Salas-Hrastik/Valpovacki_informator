@@ -11,7 +11,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config';
 import type { RetrievedChunk } from './retrieval';
 
-const SNIPPET_CHARS = 450; // koliko teksta po kandidatu šaljemo rerankeru
+const SNIPPET_CHARS = 350; // koliko teksta po kandidatu šaljemo rerankeru (kraće = brži rerank)
 const RERANK_TIMEOUT_MS = 8000; // gornja granica čekanja; nakon toga izvorni poredak
 
 export async function rerankChunks(

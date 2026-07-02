@@ -39,6 +39,24 @@ export async function retrieve(
   // Za reranking dohvaćamo ŠIRI skup kandidata pa ih LLM presloži po relevantnosti.
   const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
+  // BRZINA: dohvat najnovijih / zdravstvenih dokumenata NE ovisi o embeddingu ni
+  // vektorskoj pretrazi (dedupira se tek naknadno), pa ga pokrećemo PARALELNO s
+  // njima. Time se te DB runde skidaju s kritičnog puta i prvi token stiže ranije.
+  const wantRecency = isRecencyQuery(query);
+  const wantHealth = isHealthQuery(query);
+  const recencyP: Promise<RetrievedChunk[]> = wantRecency
+    ? fetchRecentChunks(sb, config.dailyHosts, topK + 4, threshold).catch((e) => {
+        console.error('[retrieval] dohvat najnovijih dokumenata nije uspio:', e);
+        return [];
+      })
+    : Promise.resolve([]);
+  const healthP: Promise<RetrievedChunk[]> = wantHealth
+    ? fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold).catch((e) => {
+        console.error('[retrieval] dohvat zdravstvenih stranica nije uspio:', e);
+        return [];
+      })
+    : Promise.resolve([]);
+
   // 1) Vektorsko pretraživanje (širi skup) — HNSW indeks, brzo.
   const queryEmbedding = await embedText(query);
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
@@ -92,29 +110,21 @@ export async function retrieve(
   // sličnost tu ne pomaže (generičke riječi pogađaju stare glasnike/dokumente), pa
   // dodatno dovlačimo NAJNOVIJE dokumente (po datumu objave) iz vijesti/događanja
   // izvora i stavljamo ih NAPRIJED — rerank ih dalje presloži po relevantnosti.
-  if (isRecencyQuery(query)) {
-    try {
-      const recent = await fetchRecentChunks(sb, config.dailyHosts, topK + 4, threshold);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = recent.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat najnovijih dokumenata nije uspio:', e);
-    }
+  if (wantRecency) {
+    const recent = await recencyP; // već pokrenuto paralelno s embeddingom/vektorom
+    const have = new Set(candidates.map((c) => c.chunk_id));
+    const fresh = recent.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+    candidates.unshift(...fresh);
   }
 
   // 3c) Zdravstveni upiti ("ordinacije", "ambulante", "dom zdravlja"…): opće/nejasno
   // pitanje ne mapira se na pojedine stranice ambulanti, pa ubacujemo SVE stranice
   // Doma zdravlja (Valpovo) u izbor — rerank ih dalje presloži.
-  if (isHealthQuery(query)) {
-    try {
-      const health = await fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = health.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat zdravstvenih stranica nije uspio:', e);
-    }
+  if (wantHealth) {
+    const health = await healthP; // već pokrenuto paralelno s embeddingom/vektorom
+    const have = new Set(candidates.map((c) => c.chunk_id));
+    const fresh = health.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+    candidates.unshift(...fresh);
   }
 
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi

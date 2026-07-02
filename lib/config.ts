@@ -136,7 +136,10 @@ export const config = {
   // npr. stranica događanja ne ostane "zatrpana" zapisnicima sjednica. UKLJUČEN
   // prema zadanom (mali dodatni trošak ~1 s); isključuje se s RAG_RERANK=0.
   ragRerank: process.env.RAG_RERANK !== '0',
-  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 40),
+  // BRZINA: rerank je LLM runda na kritičnom putu (blokira prvi token). Uži skup
+  // kandidata = manje ulaza za Haiku = brži odgovor; vektor ionako već rangira, pa
+  // je 30 dovoljno da pravi dokument uđe u izbor. Podesivo s RAG_RERANK_CANDIDATES.
+  ragRerankCandidates: int('RAG_RERANK_CANDIDATES', 30),
   rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
