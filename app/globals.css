@@ -416,6 +416,24 @@ body {
   justify-content: center;
 }
 .chat-input .chat-mic:hover:not(:disabled) { background: var(--boja-pozadina-blago); }
+
+/* Izbornik jezika glasovnog unosa (diktiranja) — kompaktan, uz mikrofon */
+.chat-input .voice-lang {
+  align-self: flex-end;
+  flex-shrink: 0;
+  padding: 0 8px;
+  height: 44px;
+  background: transparent;
+  color: var(--boja-primarna);
+  border: 1px solid var(--boja-rub);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.chat-input .voice-lang:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 600px) {
+  .chat-input .voice-lang { height: 42px; font-size: 0.85rem; padding: 0 6px; }
+}
 .chat-input .chat-mic.listening {
   background: #fdeaea;
   border-color: #d33;

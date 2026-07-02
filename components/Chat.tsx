@@ -43,6 +43,19 @@ interface SpeechRecognitionLike {
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
+// Jezici glasovnog unosa (diktiranja). `bcp47` je jezik za Web Speech API
+// (računalo/Android), a `code` se šalje Whisperu (iPhone) kao jezik prijepisa.
+// Odgovor bota ostaje na hrvatskom — ovdje je riječ samo o jeziku UNOSA.
+type VoiceLang = 'hr' | 'en' | 'de';
+const VOICE_LANGS: { code: VoiceLang; label: string; bcp47: string; flag: string }[] = [
+  { code: 'hr', label: 'Hrvatski', bcp47: 'hr-HR', flag: '🇭🇷' },
+  { code: 'en', label: 'English', bcp47: 'en-US', flag: '🇬🇧' },
+  { code: 'de', label: 'Deutsch', bcp47: 'de-DE', flag: '🇩🇪' },
+];
+function isVoiceLang(v: unknown): v is VoiceLang {
+  return v === 'hr' || v === 'en' || v === 'de';
+}
+
 function formatDateHr(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
@@ -66,6 +79,10 @@ export default function Chat() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [useRecorder, setUseRecorder] = useState(false); // iOS: snimanje umjesto Web Speech
   const [voiceErr, setVoiceErr] = useState(''); // vidljiva poruka kad glas ne radi
+  // Jezik glasovnog UNOSA (diktiranja) — višejezično. Ref je najsvježija vrijednost
+  // dostupna unutar callbackova sa stabilnim ovisnostima (startListening/snimanje).
+  const [voiceLang, setVoiceLang] = useState<VoiceLang>('hr');
+  const voiceLangRef = useRef<VoiceLang>('hr');
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -108,6 +125,30 @@ export default function Chat() {
     useRecorderRef.current = preferRecorder;
     setUseRecorder(preferRecorder);
     setVoiceSupported(preferRecorder || webSpeech);
+  }, []);
+
+  // Učitaj zapamćeni jezik diktiranja (ako postoji).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('valpovoVoiceLang');
+      if (isVoiceLang(saved)) {
+        setVoiceLang(saved);
+        voiceLangRef.current = saved;
+      }
+    } catch {
+      /* localStorage nedostupan — ostaje zadani 'hr' */
+    }
+  }, []);
+
+  // Promjena jezika diktiranja (ažurira ref i pamti izbor).
+  const changeVoiceLang = useCallback((code: VoiceLang) => {
+    setVoiceLang(code);
+    voiceLangRef.current = code;
+    try {
+      localStorage.setItem('valpovoVoiceLang', code);
+    } catch {
+      /* pamćenje nije nužno za rad */
+    }
   }, []);
 
   // Najsvježija lista poruka dostupna izvan render-ciklusa (za izgovor odgovora).
@@ -288,7 +329,7 @@ export default function Chat() {
     if (!Ctor) return;
     transcriptRef.current = '';
     const rec = new Ctor();
-    rec.lang = 'hr-HR';
+    rec.lang = VOICE_LANGS.find((l) => l.code === voiceLangRef.current)?.bcp47 ?? 'hr-HR';
     rec.interimResults = true;
     rec.continuous = true; // kontinuirano — ne prekidaj na svaku kratku pauzu
     const clearWsTimers = () => {
@@ -440,6 +481,7 @@ export default function Chat() {
       try {
         const fd = new FormData();
         fd.append('audio', blob, 'snimka');
+        fd.append('lang', voiceLangRef.current); // jezik prijepisa (višejezično)
         const r = await fetch('/api/transcribe', { method: 'POST', body: fd });
         const data = (await r.json().catch(() => ({}))) as { text?: string };
         const text = (data.text || '').trim();
@@ -710,6 +752,23 @@ export default function Chat() {
           disabled={busy}
           aria-label="Vaše pitanje"
         />
+        {voiceSupported && !voiceMode && (
+          // Jezik diktiranja (višejezično). Postavlja Web Speech jezik i Whisper hint.
+          <select
+            className="voice-lang"
+            value={voiceLang}
+            onChange={(e) => changeVoiceLang(e.target.value as VoiceLang)}
+            disabled={busy || listening}
+            aria-label="Jezik glasovnog unosa"
+            title="Jezik diktiranja"
+          >
+            {VOICE_LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.code.toUpperCase()}
+              </option>
+            ))}
+          </select>
+        )}
         {voiceSupported && !voiceMode && (
           // Diktat: jedan pritisak pokreće govorni unos; tekst se upisuje sam, a
           // nakon stanke se pitanje pošalje. Nema zasebnog "snimanja".

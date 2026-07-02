@@ -37,10 +37,15 @@ export async function POST(req: Request): Promise<Response> {
           ? 'wav'
           : 'webm';
 
+    // Jezik prijepisa (višejezično): klijent šalje 'hr' | 'en' | 'de'. Ako izostane
+    // ili je nepoznat, izostavljamo hint pa Whisper sam prepoznaje jezik.
+    const langRaw = form.get('lang');
+    const lang = ['hr', 'en', 'de'].includes(String(langRaw)) ? String(langRaw) : '';
+
     const oaForm = new FormData();
     oaForm.append('file', audio, `snimka.${ext}`);
     oaForm.append('model', 'whisper-1');
-    oaForm.append('language', 'hr'); // hrvatski
+    if (lang) oaForm.append('language', lang); // inače: automatsko prepoznavanje jezika
     oaForm.append('response_format', 'json');
 
     const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
