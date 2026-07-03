@@ -5,8 +5,8 @@ praktičarima pomaže u učenju **menadžmenta ljudskih potencijala** — isklju
 temelju knjige **Menadžment ljudskih potencijala**. Stack: **Next.js 14 (Vercel) +
 Supabase (Postgres + pgvector) + Claude (Anthropic Messages API)**.
 
-Projekt je rađen po uzoru na edukativne asistente iste strukture (npr.
-gastronomski asistent): info-traka, naslov s dobrodošlicom, chat s prijedlozima
+Samostalan projekt rađen po uzoru na edukativni asistent **Počela gastronomije**
+(ista struktura elemenata): info-traka, naslov s dobrodošlicom, chat s prijedlozima
 pitanja, citati izvora, glasovni unos, ocjena odgovora, embed widget.
 
 ➡️ Detaljan tehnički prijedlog (arhitektura, shema, dizajnerske odluke):

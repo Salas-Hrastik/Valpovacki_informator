@@ -3,7 +3,7 @@
 Edukativni RAG (Retrieval-Augmented Generation) asistent „Petra" odgovara na
 pitanja iz **menadžmenta ljudskih potencijala** isključivo na temelju knjige
 **Menadžment ljudskih potencijala**. Struktura elemenata preuzeta je od
-postojećih edukativnih asistenata (gastronomski asistent, gradski informator)
+postojećih edukativnih asistenata (Počela gastronomije)
 i prilagođena specifičnostima područja i korpusa (knjiga umjesto weba).
 
 ## 1. Arhitektura
