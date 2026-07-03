@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" width="640" height="180" role="img" aria-label="AI asistent ljudskih potencijala">
+  <!-- Tri stilizirane osobe — tim / ljudski potencijali -->
+  <g>
+    <!-- lijeva osoba -->
+    <circle cx="60" cy="62" r="22" fill="#2a6099"/>
+    <path d="M24 138 a36 36 0 0 1 72 0 z" fill="#2a6099"/>
+    <!-- desna osoba -->
+    <circle cx="180" cy="62" r="22" fill="#2a6099"/>
+    <path d="M144 138 a36 36 0 0 1 72 0 z" fill="#2a6099"/>
+    <!-- srednja (istaknuta) osoba -->
+    <circle cx="120" cy="50" r="27" fill="#16406b"/>
+    <path d="M76 142 a44 44 0 0 1 88 0 z" fill="#16406b"/>
+  </g>
+  <!-- Natpis -->
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text x="248" y="78" font-size="42" font-weight="700" fill="#16406b">Ljudski potencijali</text>
+    <text x="250" y="120" font-size="24" font-weight="600" fill="#2a6099">edukativni AI asistent</text>
+  </g>
+</svg>

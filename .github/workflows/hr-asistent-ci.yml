@@ -1,0 +1,47 @@
+# CI za projekt hr-asistent (AI asistent ljudskih potencijala) — lint,
+# type-check, build. Pokreće se samo na promjene unutar hr-asistent/.
+#
+# NAPOMENA: kada projekt "hr-asistent" postane vlastiti repozitorij
+# (preporučeno), premjestite ovu datoteku u njegov .github/workflows i
+# promijenite working-directory u ".".
+name: CI (hr-asistent)
+
+on:
+  push:
+    branches: [main]
+    paths: ['hr-asistent/**']
+  pull_request:
+    paths: ['hr-asistent/**']
+
+defaults:
+  run:
+    working-directory: hr-asistent
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: hr-asistent/package-lock.json
+
+      - name: Instalacija ovisnosti
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build ne poziva vanjske servise; lažne vrijednosti zadovoljavaju validaciju ENV-a
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+          ANTHROPIC_API_KEY: ci-placeholder

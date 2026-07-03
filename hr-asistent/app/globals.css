@@ -1,0 +1,523 @@
+/* AI asistent ljudskih potencijala — minimalni, pristupačni stilovi.
+   Paleta: poslovna tamnoplava (#16406b) u nijansama. */
+:root {
+  --boja-primarna: #16406b;        /* glavna — poslovna tamnoplava */
+  --boja-primarna-tamna: #0e2c4b;  /* tamnija — hover/aktivno na punim gumbima */
+  --boja-primarna-svijetla: #2a6099;/* svjetlija — akcenti, hover */
+  --boja-pozadina: #eef1f5;        /* stranica — vrlo blaga plavkasta */
+  --boja-pozadina-blago: #e3e9f0;  /* kartice/baloni/zaglavlja tablica — blagi plavi ton */
+  --boja-bijela: #ffffff;
+  --boja-tekst: #161c22;           /* gotovo crna s plavim tonom */
+  --boja-tekst-prigusen: #566370;  /* sekundarni tekst (datumi, napomene) */
+  --boja-rub: #ccd6e0;             /* rubovi — plavkasti */
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--boja-pozadina);
+  color: var(--boja-tekst);
+  overflow: hidden; /* cijeli front stane na jedan ekran; razgovor se kliza interno */
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-widget { padding: 8px; min-height: 100vh; }
+
+/* Info-traka (datum, blagdan, imendan) na vrhu zaglavlja */
+.datum-info {
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: var(--boja-primarna);
+  background: var(--boja-pozadina-blago);
+  border: 1px solid var(--boja-rub);
+  border-radius: 8px;
+  padding: 5px 10px;
+  margin: 0 0 10px;
+}
+
+.page-header h1 { margin: 0 0 6px; font-size: 1.3rem; color: var(--boja-primarna); }
+/* Naslov: ime asistentice (veće) + podnaslov koji otvara dobrodošlicu (poveznica) */
+.page-title-name { display: block; font-size: 1.6rem; font-weight: 700; color: var(--boja-primarna); }
+.page-title-sub-link {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--boja-primarna-svijetla);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.page-title-sub-link:hover { color: var(--boja-primarna); }
+/* Logotip (ljudi + natpis) iznad naslova */
+.page-logo { display: block; width: 230px; max-width: 100%; height: auto; margin: 0 0 8px; }
+
+/* Skočni prozor s dobrodošlicom — koristi iste osnovne stilove kao izvori */
+.intro-modal p { margin: 0 0 10px; font-size: 0.98rem; line-height: 1.5; color: var(--boja-tekst); }
+.intro-modal-signature {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--boja-primarna);
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--boja-bijela);
+  border: 1px solid var(--boja-rub);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0; /* dopušta da se kliza interno umjesto da rastegne stranicu */
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg { display: flex; }
+.msg-user { justify-content: flex-end; }
+.msg-assistant { justify-content: flex-start; align-items: flex-start; gap: 8px; }
+
+/* Avatar asistentice (Petra) uz odgovore — kao kod poznatih chatbotova */
+.msg-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+/* Prazno stanje (prije prvog pitanja): pozdrav Petre + prijedlozi */
+.chat-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 4px; }
+.chat-empty-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.35rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+.chat-empty-hint { margin: 0; font-size: 1.08rem; line-height: 1.5; color: var(--boja-tekst); }
+.chat-empty-hint strong { color: var(--boja-primarna); }
+
+/* Alatna traka iznad razgovora (Novi razgovor) */
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--boja-rub);
+  background: var(--boja-pozadina-blago);
+}
+.chat-reset {
+  background: transparent;
+  border: 1px solid var(--boja-rub);
+  color: var(--boja-primarna);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.chat-reset:hover:not(:disabled) { background: var(--boja-primarna); color: #fff; border-color: var(--boja-primarna); }
+.chat-reset:disabled { opacity: 0.5; cursor: default; }
+
+/* Brzi prijedlozi pitanja (chips) */
+.chat-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip {
+  background: var(--boja-bijela);
+  border: 1px solid var(--boja-primarna);
+  color: var(--boja-primarna);
+  border-radius: 999px;
+  padding: 8px 15px;
+  font-size: 0.98rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.chip:hover { background: var(--boja-primarna); color: #fff; }
+.chip:active { background: var(--boja-primarna-tamna); }
+
+/* Gumb "Kopiraj odgovor" unutar odgovora asistenta */
+.msg-copy {
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: var(--boja-tekst-prigusen);
+  font-size: 0.78rem;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.msg-copy:hover { color: var(--boja-primarna); text-decoration: underline; }
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 9px 13px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 1.06rem; /* čitljivo i na manjim ekranima */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); /* blago zasjenjena podloga odgovora */
+}
+
+.msg-user .msg-bubble { background: var(--boja-primarna); color: #fff; border-bottom-right-radius: 4px; }
+.msg-assistant .msg-bubble { background: var(--boja-pozadina-blago); border-bottom-left-radius: 4px; }
+
+/* Renderirani Markdown unutar odgovora: uredni razmaci između blok-elemenata.
+   Blago zasjenjen (čitljiviji) tekst. */
+.msg-text { white-space: normal; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.07); }
+.msg-text > :first-child { margin-top: 0; }
+.msg-text > :last-child { margin-bottom: 0; }
+.msg-text p { margin: 0 0 8px; }
+.msg-text ul, .msg-text ol { margin: 4px 0 8px; padding-left: 20px; }
+.msg-text a { color: var(--boja-primarna); text-decoration: underline; }
+
+/* Tablice (npr. usporedbe metoda): pregledan prikaz s vodoravnim klizanjem na
+   uskim ekranima da široke tablice ne razbiju razgovor. */
+.msg-text table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 0.9rem;
+  display: block;
+  overflow-x: auto;
+}
+.msg-text th, .msg-text td {
+  border: 1px solid var(--boja-rub);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.msg-text thead th { background: var(--boja-pozadina-blago, #f3f4f6); font-weight: 600; }
+.msg-text tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.025); }
+
+.msg-source-date { color: var(--boja-tekst-prigusen); }
+
+/* Gumb "Izvori (N)" — otvara skočni prozor s popisom izvora */
+.msg-sources-btn {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--boja-primarna);
+  border: 1px solid var(--boja-rub);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.msg-sources-btn:hover { background: var(--boja-primarna); color: #fff; border-color: var(--boja-primarna); }
+
+/* Skočni prozor (modal) s izvorima — manjih dimenzija, zatvara se klikom/Esc */
+.sources-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+.sources-modal {
+  background: var(--boja-bijela);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 420px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+.sources-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sources-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--boja-tekst-prigusen);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.sources-modal-close:hover { background: var(--boja-pozadina); color: var(--boja-tekst); }
+.sources-modal ul { margin: 0; padding-left: 18px; font-size: 0.95rem; }
+.sources-modal li { margin: 6px 0; }
+.sources-modal a { color: var(--boja-primarna); }
+/* Napomena ispod popisa izvora (naziv knjige) */
+.sources-modal-note {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--boja-tekst-prigusen);
+}
+
+/* Skočni preglednik poveznice (poveznice u odgovoru otvaraju se ovdje) */
+.link-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1100;
+}
+.link-modal {
+  background: var(--boja-bijela);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 960px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.link-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--boja-rub);
+}
+.link-modal-url {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--boja-tekst-prigusen);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.link-modal-open {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: var(--boja-primarna);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.link-modal-open:hover { text-decoration: underline; }
+.link-modal-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--boja-tekst-prigusen);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.link-modal-close:hover { background: var(--boja-pozadina); color: var(--boja-tekst); }
+.link-modal-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: var(--boja-pozadina);
+}
+.link-modal-note {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--boja-tekst-prigusen);
+  border-top: 1px solid var(--boja-rub);
+  text-align: center;
+}
+
+.chat-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--boja-rub);
+}
+
+.chat-input textarea {
+  flex: 1;
+  min-width: 0; /* dopušta skupljanje na uskim ekranima (bez prelijevanja) */
+  padding: 11px 14px;
+  border: 1px solid var(--boja-rub);
+  border-radius: 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: none;
+  overflow-y: auto;
+  max-height: 120px;
+}
+.chat-input textarea:focus {
+  outline: none;
+  border-color: var(--boja-primarna);
+  box-shadow: 0 0 0 2px rgba(22, 64, 107, 0.18);
+}
+
+.chat-input button {
+  padding: 11px 20px;
+  background: var(--boja-primarna);
+  color: #fff;
+  border: none;
+  border-radius: 999px; /* pill — moderniji izgled */
+  font-size: 1rem;
+  cursor: pointer;
+  align-self: flex-end;
+  flex-shrink: 0; /* gumbi zadržavaju veličinu; skuplja se polje za unos */
+  transition: background 0.15s;
+}
+.chat-input button:hover:not(:disabled) { background: var(--boja-primarna-tamna); }
+.chat-input button:disabled { opacity: 0.5; cursor: default; }
+
+/* Gumb mikrofona (glasovni unos pitanja) — okrugli, drukčiji od "Pošalji" */
+.chat-input .chat-mic {
+  background: transparent;
+  color: var(--boja-primarna);
+  border: 1px solid var(--boja-rub);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-input .chat-mic:hover:not(:disabled) { background: var(--boja-pozadina-blago); }
+.chat-input .chat-mic.listening {
+  background: #fdeaea;
+  border-color: #d33;
+  animation: mic-pulse 1.3s infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(211, 51, 51, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(211, 51, 51, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-input .chat-mic.listening { animation: none; }
+}
+
+/* Animirani indikator "asistentica piše" (tri točke) */
+.typing { display: inline-flex; align-items: center; gap: 4px; padding: 4px 0; }
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--boja-primarna);
+  opacity: 0.4;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing span { animation: none; opacity: 0.6; }
+}
+
+.chat-disclaimer {
+  margin: 0;
+  padding: 6px 12px 8px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--boja-tekst-prigusen);
+}
+
+/* Poruka kad glasovni unos ne radi */
+.voice-err {
+  margin: 0;
+  padding: 6px 12px 0;
+  font-size: 0.78rem;
+  color: #b3261e;
+}
+
+/* Pristupačnost: jasan fokus-obrub za korisnike tipkovnice */
+a:focus-visible,
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--boja-primarna);
+  outline-offset: 2px;
+}
+
+/* Mobilni izgled (telefoni i uži ekrani) — font ostaje čitljiv, a zaglavlje
+   kompaktnije da razgovor dobije što više prostora na ekranu. */
+@media (max-width: 600px) {
+  .page { padding: 8px 10px; }
+  .datum-info { font-size: 0.8rem; padding: 4px 8px; margin: 0 0 6px; }
+  .page-logo { width: 150px; margin: 0 0 4px; }
+  .page-header h1 { margin: 0 0 2px; }
+  .page-title-name { font-size: 1.3rem; }
+  .page-title-sub-link { font-size: 0.95rem; }
+
+  .chat-toolbar { padding: 6px 10px; }
+  .chat-messages { padding: 12px; gap: 10px; }
+  .msg-bubble { max-width: 92%; font-size: 1.06rem; }
+  .msg-avatar { width: 30px; height: 30px; font-size: 0.9rem; }
+  .chat-empty-hint { font-size: 1.06rem; }
+
+  .chat-input { padding: 8px; gap: 6px; }
+  .chat-input textarea { font-size: 16px; } /* 16px sprječava zoom na iOS-u */
+  .chat-input button { padding: 11px 16px; font-size: 0.98rem; }
+  .chat-input .chat-mic { width: 42px; height: 42px; padding: 0; }
+
+  /* Napomena zauzima što manje prostora na telefonu: sitnije i zbijenije */
+  .chat-disclaimer { font-size: 0.66rem; line-height: 1.28; padding: 4px 10px 6px; }
+  .chip { font-size: 0.94rem; padding: 8px 13px; } /* dovoljno velik tap-cilj */
+
+  /* Skočni preglednik poveznice koristi gotovo cijeli ekran na telefonu */
+  .link-modal { height: 92vh; max-width: 100%; }
+  .link-modal-url { font-size: 0.78rem; }
+  .link-modal-open { font-size: 0.82rem; }
+}
+
+/* Vrlo uski telefoni: dodatno skupi gumbe da unos ostane upotrebljiv */
+@media (max-width: 360px) {
+  .chat-input { gap: 5px; }
+  .chat-input button { padding: 9px 10px; font-size: 0.9rem; }
+}
+
+/* Embed widget: bez vanjskog razmaka, puna visina iframea */
+.page-widget .chat { border: none; border-radius: 0; }
