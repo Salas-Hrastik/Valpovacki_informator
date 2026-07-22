@@ -50,6 +50,13 @@ async function handle(req: Request): Promise<Response> {
   const params = new URL(req.url).searchParams;
   const scope = params.get('scope');
   const isDaily = scope === 'daily' || scope === 'homepage';
+  // Najciljanije: ?only=url1,url2 obrađuje SAMO te stranice (+ PDF/slike koje na
+  // njima otkrije) i forsira obradu — npr. stranica Službenih glasnika i svi njezini
+  // PDF-ovi, bez trošenja vremena na ostatak sjedišta.
+  const onlyParam = params.get('only');
+  const onlyUrls = onlyParam
+    ? onlyParam.split(',').map((s) => s.trim()).filter(Boolean)
+    : undefined;
   // Ciljano ručno pokretanje: ?hosts=domena1,domena2 obrađuje SAMO te domene i
   // forsira osvježavanje (freshDays=0) — brzo povlačenje pojedinih izvora.
   const hostsParam = params.get('hosts');
@@ -60,9 +67,10 @@ async function handle(req: Request): Promise<Response> {
   const freshDays = explicitHosts ? 0 : isDaily ? config.dailyFreshDays : undefined;
 
   // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
-  const stats = await runIngest({ deadlineMs: 280_000, onlyHosts, freshDays });
+  const stats = await runIngest({ deadlineMs: 280_000, onlyUrls, onlyHosts, freshDays });
 
-  return new Response(JSON.stringify({ ok: true, scope: scope ?? (explicitHosts ? 'hosts' : 'full'), stats }), {
+  const scopeLabel = onlyUrls ? 'only' : (scope ?? (explicitHosts ? 'hosts' : 'full'));
+  return new Response(JSON.stringify({ ok: true, scope: scopeLabel, stats }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }
