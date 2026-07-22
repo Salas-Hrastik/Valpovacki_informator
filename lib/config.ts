@@ -75,6 +75,8 @@ const SEED_URLS_DEFAULT = [
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
   'https://zupavalpo.wixsite.com/zupa-valpovo/%C5%BEupni-ured',
+  // Stranica s popisom Službenih glasnika — s nje crawler otkriva sve PDF glasnike
+  'https://valpovo.hr/sluzbeni-glasnici/',
   'https://valpovo.hr/',
 ];
 
