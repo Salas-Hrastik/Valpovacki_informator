@@ -72,6 +72,10 @@ export function isExcludedUrl(url: string, patterns: string[] = config.excludeUr
  * OTKRIVENE PDF/slika poveznice (koje inače zaobilaze isExcludedUrl).
  */
 export function isOldArchiveUrl(url: string, minYear: number = config.archiveMinYear): boolean {
+  // Izuzeci (npr. "glasnik"): temeljni dokumenti koje UVIJEK ingestiramo bez obzira
+  // na godinu — Službeni glasnici vrijede i kad su stariji.
+  const lower = url.toLowerCase();
+  if (config.archiveExemptPatterns.some((p) => p && lower.includes(p.toLowerCase()))) return false;
   const years = [...url.matchAll(/(?:19|20)\d{2}/g)].map((m) => parseInt(m[0], 10));
   if (years.length === 0) return false; // nema godine — ne preskačemo
   return Math.max(...years) < minYear;

@@ -187,6 +187,9 @@ export const config = {
   // čija je najveća godina u URL-u manja od ove smatraju se arhivom i preskaču se
   // (npr. plan nabave 2018, raspored odvoza 2015). URL-ovi bez godine se zadržavaju.
   archiveMinYear: int('INGEST_MIN_YEAR', 2025),
+  // Izuzeci od filtra starih arhiva: PDF/URL-ovi koji sadrže neki od podniza UVIJEK
+  // se ingestiraju bez obzira na godinu (Službeni glasnici vrijede i kad su stariji).
+  archiveExemptPatterns: list('ARCHIVE_EXEMPT_PATTERNS', ['glasnik']),
   // Zaštita PDF-koraka: timeout za pdf-parse (CPU parsiranje nema vlastiti timeout
   // pa pokvaren/golem PDF može zaglaviti cijeli ingest) i gornja granica veličine.
   pdfParseTimeoutMs: int('PDF_PARSE_TIMEOUT_MS', 20_000),
