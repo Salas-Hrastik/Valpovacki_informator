@@ -9,7 +9,7 @@ import { config } from '../config';
 import { chunkText } from '../chunking';
 import { embedTexts, l2norm } from '../embeddings';
 import { supabaseAdmin } from '../supabase';
-import { fetchResource, gatherUrls, isAllowedHost, isOldArchiveUrl, sleep } from './crawler';
+import { fetchResource, gatherUrls, isAllowedHost, isOldArchiveUrl, normalizeUrl, sleep } from './crawler';
 import {
   extractFromHtml,
   extractFromImage,
@@ -127,8 +127,22 @@ export async function runIngest(
     const ms = t ? new Date(t).getTime() : NaN;
     return Number.isFinite(ms) ? ms : 0;
   };
+  // Seed-stranice (npr. popis Službenih glasnika) obrađujemo PRVE — s njih se
+  // otkrivaju važne PDF poveznice (glasnici) pa ih stignemo obraditi u istom prolazu.
+  const seedSet = new Set(
+    config.seedUrls.map((s) => {
+      try {
+        return normalizeUrl(s);
+      } catch {
+        return s;
+      }
+    }),
+  );
   const urls = allUrls
     .sort((a, b) => {
+      const aSeed = seedSet.has(a) ? 0 : 1;
+      const bSeed = seedSet.has(b) ? 0 : 1;
+      if (aSeed !== bSeed) return aSeed - bSeed; // seed-stranice prve
       const aNew = existingMap.has(a) ? 1 : 0;
       const bNew = existingMap.has(b) ? 1 : 0;
       if (aNew !== bNew) return aNew - bNew; // novi (0) prije postojećih (1)
@@ -245,15 +259,19 @@ export async function runIngest(
     await sleep(config.crawlDelayMs);
   }
 
+  // HTML prolaz staje ranije (60% vremena) kako bi ostalo vremena za PDF-ove
+  // (npr. Službeni glasnici) koji se obrađuju u drugom prolazu — inače na kratkom
+  // limitu (Hobby ~60 s) HTML potroši sve vrijeme i do PDF-ova se nikad ne dođe.
+  const htmlDeadline = deadline === Infinity ? Infinity : startedAt + (deadline - startedAt) * 0.6;
   for (const url of urls) {
-    if (Date.now() > deadline) {
-      console.warn('[ingest] Dosegnut vremenski limit izvršavanja — prekid (nastavlja se idući put).');
+    if (Date.now() > htmlDeadline) {
+      console.warn('[ingest] HTML prolaz: rezerviram preostalo vrijeme za PDF-ove (nastavak idući put).');
       break;
     }
     await processUrl(url);
   }
 
-  // Drugi prolaz: PDF-ovi otkriveni na stranicama (proračuni, odluke…)
+  // Drugi prolaz: PDF-ovi otkriveni na stranicama (glasnici, proračuni, odluke…)
   const pdfList = [...discoveredPdfs].filter((u) => !processedUrls.has(u));
   if (pdfList.length > 0) {
     console.log(`[ingest] Otkriveno ${pdfList.length} PDF poveznica na stranicama — obrađujem.`);
