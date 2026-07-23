@@ -128,14 +128,95 @@ export async function retrieve(
   let budget = config.ragContextCharBudget;
   for (const r of ordered) {
     const n = perUrl.get(r.url) ?? 0;
-    if (n >= 3) continue; // do 3 isječka po dokumentu (popisi imena znaju biti duži)
+    if (n >= 5) continue; // do 5 isječaka po dokumentu (dulji dokumenti, popisi imena…)
     if (r.text.length > budget) continue;
     perUrl.set(r.url, n + 1);
     budget -= r.text.length;
     final.push(r);
     if (final.length >= topK) break;
   }
-  return final;
+
+  // 6) Kontekstualno proširenje: dodaj SUSJEDNE isječke (isti dokument, chunk_index ±1)
+  // odabranih isječaka. Traženi podatak (npr. popis imena) često je odmah do naslova/uvoda
+  // koji je pogođen, ali u zasebnom isječku koji sam po sebi slabo odgovara upitu.
+  try {
+    return await expandWithNeighbors(sb, final, budget);
+  } catch (e) {
+    console.error('[retrieval] kontekstualno proširenje nije uspjelo:', e);
+    return final;
+  }
+}
+
+/**
+ * Za svaki odabrani isječak dodaje susjedne isječke istog dokumenta (chunk_index ±1),
+ * unutar preostalog proračuna znakova. Dvije lagane pretrage po indeksiranim stupcima.
+ */
+async function expandWithNeighbors(
+  sb: ReturnType<typeof supabaseAdmin>,
+  chunks: RetrievedChunk[],
+  budgetLeft: number,
+): Promise<RetrievedChunk[]> {
+  if (chunks.length === 0 || budgetLeft <= 0) return chunks;
+
+  const ids = chunks.map((c) => c.chunk_id);
+  const { data: meta, error } = await sb
+    .from('dijelovi')
+    .select('id, document_id, chunk_index')
+    .in('id', ids);
+  if (error || !meta || meta.length === 0) return chunks;
+
+  type Meta = { id: string; document_id: string; chunk_index: number };
+  const byId = new Map<string, Meta>((meta as Meta[]).map((m) => [m.id, m]));
+  // Predstavnik dokumenta (za naslov/url/fetched_at susjeda) = isječak iz `chunks`.
+  const parentByDoc = new Map<string, RetrievedChunk>();
+  for (const c of chunks) {
+    const m = byId.get(c.chunk_id);
+    if (m && !parentByDoc.has(m.document_id)) parentByDoc.set(m.document_id, c);
+  }
+
+  const want = new Set<string>(); // "document_id:chunk_index"
+  const docIds = new Set<string>();
+  const idxSet = new Set<number>();
+  for (const m of meta as Meta[]) {
+    for (const d of [-1, 1]) {
+      const ni = m.chunk_index + d;
+      if (ni < 0) continue;
+      want.add(`${m.document_id}:${ni}`);
+      docIds.add(m.document_id);
+      idxSet.add(ni);
+    }
+  }
+  for (const m of meta as Meta[]) want.delete(`${m.document_id}:${m.chunk_index}`); // ne dupliciraj postojeće
+  if (want.size === 0) return chunks;
+
+  const { data: neigh, error: e2 } = await sb
+    .from('dijelovi')
+    .select('id, document_id, chunk_index, text')
+    .in('document_id', [...docIds])
+    .in('chunk_index', [...idxSet]);
+  if (e2 || !neigh) return chunks;
+
+  const have = new Set(chunks.map((c) => c.chunk_id));
+  const result = [...chunks];
+  let budget = budgetLeft;
+  type Part = { id: string; document_id: string; chunk_index: number; text: string };
+  for (const n of neigh as Part[]) {
+    if (!want.has(`${n.document_id}:${n.chunk_index}`) || have.has(n.id)) continue;
+    if (!n.text || n.text.length > budget) continue;
+    const parent = parentByDoc.get(n.document_id);
+    if (!parent) continue;
+    result.push({
+      chunk_id: n.id,
+      text: n.text,
+      title: parent.title,
+      url: parent.url,
+      fetched_at: parent.fetched_at,
+      score: parent.score,
+    });
+    have.add(n.id);
+    budget -= n.text.length;
+  }
+  return result;
 }
 
 /**

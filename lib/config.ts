@@ -132,7 +132,7 @@ export const config = {
   // kao rezerva: kad vektorski upit vrati manje od ovoliko rezultata. Za većinu
   // pitanja vektor vraća dovoljno pa se FTS preskače (znatno brži dohvat).
   ragFtsMinVec: int('RAG_FTS_MIN_VEC', 6),
-  ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 12000),
+  ragContextCharBudget: int('RAG_CONTEXT_CHAR_BUDGET', 16000),
   // Reranking: širi skup kandidata se LLM-om (Haiku) presloži po stvarnoj
   // relevantnosti — bira pravi dokument među mnogo sličnih (npr. zapisnika), pa
   // npr. stranica događanja ne ostane "zatrpana" zapisnicima sjednica. UKLJUČEN
