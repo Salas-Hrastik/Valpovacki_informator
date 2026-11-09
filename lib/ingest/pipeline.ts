@@ -22,7 +22,16 @@ import {
 // Postavljen ispod tjednog ciklusa (7 dana) kako bismo izbjegli rad samo s
 // dvostrukim provjeravanjem, a istovremeno ostavili marginu za pomak rasporeda.
 const FRESH_DAYS = 5;
+// Već uvezeni PDF-ovi (uploadi) gotovo se nikad ne mijenjaju — ponovno ih
+// provjeravamo najviše jednom u PDF_FRESH_DAYS dana, inače dnevni prolaz potroši
+// sve vrijeme na stare PDF-ove i do NOVIH (npr. poziv na sjednicu) nikad ne dođe.
+const PDF_FRESH_DAYS = 14;
 const PAGE = 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isPdfUrl(url: string): boolean {
+  return url.toLowerCase().split(/[?#]/)[0].endsWith('.pdf');
+}
 
 /**
  * Procjenjuje "svježinu sadržaja" iz URL-a radi prioritizacije (veće = novije).
@@ -170,10 +179,11 @@ export async function runIngest(
     processedUrls.add(url);
 
     const prev = existingMap.get(url);
+    const windowMs = isPdfUrl(url) ? Math.max(freshMs, PDF_FRESH_DAYS * DAY_MS) : freshMs;
     if (
       !force &&
       prev && prev.fetchedAt &&
-      Date.now() - new Date(prev.fetchedAt).getTime() < freshMs
+      Date.now() - new Date(prev.fetchedAt).getTime() < windowMs
     ) {
       stats.skippedFresh++;
       return;
@@ -272,7 +282,17 @@ export async function runIngest(
   }
 
   // Drugi prolaz: PDF-ovi otkriveni na stranicama (glasnici, proračuni, odluke…)
-  const pdfList = [...discoveredPdfs].filter((u) => !processedUrls.has(u));
+  // Novi PDF-ovi (kojih još nema u bazi) prvi, među njima najnoviji po datumu iz
+  // URL-a (/uploads/2026/10/… prije /2025/…); zatim postojeći, najstarije provjereni prvi.
+  const pdfList = [...discoveredPdfs]
+    .filter((u) => !processedUrls.has(u))
+    .sort((a, b) => {
+      const aOld = existingMap.has(a) ? 1 : 0;
+      const bOld = existingMap.has(b) ? 1 : 0;
+      if (aOld !== bOld) return aOld - bOld;
+      if (aOld === 0) return recencyScore(b) - recencyScore(a);
+      return fetchedAtMs(a) - fetchedAtMs(b);
+    });
   if (pdfList.length > 0) {
     console.log(`[ingest] Otkriveno ${pdfList.length} PDF poveznica na stranicama — obrađujem.`);
   }

@@ -134,6 +134,21 @@ export async function retrieve(
     }
   }
 
+  // 3e) Sjednice Gradskog vijeća ("zadnja sjednica", "dnevni red vijeća"…): pozivi i
+  // zapisnici svih saziva međusobno su gotovo identični, pa vektorska pretraga ne zna
+  // koji je NAJNOVIJI (a novi saziv broji sjednice ispočetka). Ubacujemo najnovije
+  // pozive/zapisnike Gradskog vijeća po datumu objave.
+  if (isCouncilQuery(query)) {
+    try {
+      const council = await fetchLatestCouncilChunks(sb, 3, 4, threshold);
+      const have = new Set(candidates.map((c) => c.chunk_id));
+      const fresh = council.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+      candidates.unshift(...fresh);
+    } catch (e) {
+      console.error('[retrieval] dohvat sjednica Gradskog vijeća nije uspio:', e);
+    }
+  }
+
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
@@ -312,6 +327,35 @@ function serviceTopicUrls(query: string): string[] {
     for (const u of t.urls ?? []) out.add(u);
   }
   return [...out];
+}
+
+const COUNCIL_PATTERNS = ['gradsko vijeć', 'gradskog vijeć', 'gradskom vijeć', 'gradsko vijec', 'gradskog vijec', 'gradskom vijec', 'sjednic', 'dnevni red', 'dnevnom redu', 'vijećnik', 'vijecnik'];
+
+function isCouncilQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return COUNCIL_PATTERNS.some((p) => q.includes(p));
+}
+
+/** Najnoviji pozivi i zapisnici sjednica Gradskog vijeća (bez odbora/komisija), po datumu objave. */
+async function fetchLatestCouncilChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  limit: number,
+  chunksPerDoc: number,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const { data: docs, error } = await sb
+    .from('dokumenti')
+    .select('url, published_at')
+    .eq('source', 'valpovo.hr')
+    .like('url', '%/wp-content/uploads/%')
+    .or('url.ilike.%poziv%sjednic%,url.ilike.%zapisnik%sj%')
+    .not('url', 'ilike', '%odbor%')
+    .not('url', 'ilike', '%komisij%')
+    .not('published_at', 'is', null)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+  if (error || !docs || docs.length === 0) return [];
+  return fetchChunksByUrls(sb, (docs as { url: string }[]).map((d) => d.url), chunksPerDoc, score);
 }
 
 /** Isječci zadanih dokumenata (po URL-u), najviše `chunksPerDoc` po dokumentu. */
