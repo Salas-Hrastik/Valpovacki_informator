@@ -36,6 +36,8 @@ const ALLOWED_HOSTS_DEFAULT = [
   'zupavalpo.wixsite.com',
   // Ljekarne Srce — Ljekarna Valpovo (adresa, telefon, radno vrijeme)
   'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
+  // Ljekarne Kalenić — Ljekarna Valpovo, J. J. Strossmayera 12 (popis lokacija)
+  'ljekarne-kalenic.hr', 'www.ljekarne-kalenic.hr',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -78,6 +80,8 @@ const SEED_URLS_DEFAULT = [
   'https://www.dzobz.hr/',
   // Ljekarna Valpovo (Ljekarne Srce) — radno vrijeme i kontakt ljekarne
   'https://ljekarne-srce.hr/ljekarne/ljekarna-valpovo/',
+  // Ljekarne Kalenić — stranica lokacija (uključuje valpovačku ljekarnu)
+  'https://ljekarne-kalenic.hr/lokacije/',
   'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
@@ -181,6 +185,7 @@ export const config = {
   healthHosts: list('HEALTH_HOSTS', [
     'dzobz.hr', 'www.dzobz.hr',
     'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
+    'ljekarne-kalenic.hr', 'www.ljekarne-kalenic.hr',
   ]),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
