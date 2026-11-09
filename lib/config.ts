@@ -34,6 +34,8 @@ const ALLOWED_HOSTS_DEFAULT = [
   // Župni ured Valpovo (Wix stranica) — NAPOMENA: Wix sadržaj se renderira
   // JavaScriptom, pa statički dohvat može vratiti malo teksta (vidi se nakon ingestije).
   'zupavalpo.wixsite.com',
+  // Ljekarne Srce — Ljekarna Valpovo (adresa, telefon, radno vrijeme)
+  'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -71,6 +73,11 @@ const SEED_URLS_DEFAULT = [
   'https://www.zsuval.com/',
   'https://www.dzobz.hr/obiteljska_grad_valpovo/',
   'https://www.dzobz.hr/ginekologija_grad_valpovo-2/',
+  // Naslovnica Doma zdravlja — JEDINO mjesto gdje su objavljena vikend/blagdanska
+  // DEŽURSTVA (obiteljska medicina, pedijatrija, dentalna) za cijelu županiju.
+  'https://www.dzobz.hr/',
+  // Ljekarna Valpovo (Ljekarne Srce) — radno vrijeme i kontakt ljekarne
+  'https://ljekarne-srce.hr/ljekarne/ljekarna-valpovo/',
   'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
@@ -87,6 +94,11 @@ const EXCLUDE_URL_PATTERNS_DEFAULT = [
   // WordPress arhive/feedovi/sistem
   '/tag/', '/page/', '/author/', '/category/', '/feed', '/wp-json',
   '?replytocom', '/attachment/', '/comment-page-', '/wp-content/uploads/',
+  // Dom zdravlja: "regionalne" stranice Valpova (bez "_grad_") na samom webu dzobz.hr
+  // prikazuju POGREŠAN sadržaj (ordinacija u Antunovcu) ili su prazne — zbunjuju model.
+  // Prave valpovačke ambulante su na *_grad_valpovo* stranicama.
+  'dzobz.hr/obiteljska_valpovo/', 'dzobz.hr/pedijatrija_valpovo/',
+  'dzobz.hr/dentalna_valpovo/', 'dzobz.hr/ginekologija_valpovo/',
   // Galerije i listanja (plugin-stranice bez tekstualne vrijednosti).
   // NAPOMENA: stranice događanja (/events/, /eventi/, /event/) NAMJERNO se više
   // ne isključuju — nose datume manifestacija (npr. Ljeto valpovačko).
@@ -166,14 +178,20 @@ export const config = {
   dailyFreshDays: int('DAILY_FRESH_DAYS', 1),
   // Domene Doma zdravlja — za zdravstvene upite ("ordinacije/ambulante") ubacuju se
   // sve njihove (valpovačke) stranice u izbor da model može nabrojati ordinacije.
-  healthHosts: list('HEALTH_HOSTS', ['dzobz.hr', 'www.dzobz.hr']),
+  healthHosts: list('HEALTH_HOSTS', [
+    'dzobz.hr', 'www.dzobz.hr',
+    'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
+  ]),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
   // Filtri po domeni: za navedene domene uzimamo SAMO URL-ove koji sadrže neki od
   // podnizova. Npr. dzobz.hr (županijski Dom zdravlja) → samo valpovačke ambulante.
+  // Naslovnica (putanja "/") filtrirane domene UVIJEK prolazi — na dzobz.hr nosi dežurstva.
   hostIncludeFilters: {
     'dzobz.hr': ['valpovo'],
     'www.dzobz.hr': ['valpovo'],
+    'ljekarne-srce.hr': ['valpovo'],
+    'www.ljekarne-srce.hr': ['valpovo'],
   } as Record<string, string[]>,
   maxChunkTokens: int('MAX_CHUNK_TOKENS', 300),
   chunkOverlapTokens: int('CHUNK_OVERLAP', 50),

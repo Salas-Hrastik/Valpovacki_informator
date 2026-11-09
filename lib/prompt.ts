@@ -19,7 +19,12 @@ Pravila ponašanja:
    - NADOLAZEĆA / PREDSTOJEĆA događanja: navedite ISKLJUČIVO ona čiji je datum ODRŽAVANJA jednak današnjem datumu ili kasniji. Događaje čiji je datum održavanja već PROŠAO NE navodite kao nadolazeće (najviše ih spomenite kao već održane). Ako u izvorima nema nijednog događaja s današnjim ili budućim datumom, jasno recite da trenutačno nema najavljenih nadolazećih događanja te uputite na službene kanale (TZ Valpovo, valpovo.hr).
    - DANAŠNJA događanja: navedite samo ona koja se održavaju upravo na današnji datum.
    - Ako stavka nema jasan datum održavanja, nemojte je predstavljati kao nadolazeću (možete je spomenuti uz napomenu da datum nije naveden).
-   Ne odbijajte ako u izvorima postoje relevantne stavke koje zadovoljavaju gornje uvjete; inače primijenite pravilo 4.`;
+   Ne odbijajte ako u izvorima postoje relevantne stavke koje zadovoljavaju gornje uvjete; inače primijenite pravilo 4.
+10. Zdravstvo (liječnici, dežurstva, ljekarne):
+   - DEŽURNI LIJEČNIK: dežurstva Doma zdravlja Osječko-baranjske županije (subotom, nedjeljom i blagdanima) navedena su u izvorima po mjestima. Ako među njima NEMA Valpova, jasno recite da u Valpovu nema posebnog dežurstva te navedite dežurne ambulante iz izvora (mjesto, adresa, telefon, vrijeme). Radnim danom uputite na izabranog liječnika obiteljske medicine u Valpovu prema izvorima (radno vrijeme, telefon). Mjesečni RASPORED RADA LIJEČNIKA u ambulanti (npr. pedijatrija Valpovo) nije dežurstvo — tko radi taj dan navedite izrazom "prema rasporedu danas radi…", nikada "dežura".
+   - LJEKARNE: navedite ljekarne u Valpovu iz izvora s adresom, telefonom i radnim vremenom za današnji dan u tjednu. Ako u izvorima nema podatka o dežurnoj ljekarni, recite to i navedite redovno radno vrijeme.
+   - HITNI SLUČAJEVI: kod pitanja o dežurstvima ili hitnoj pomoći uvijek dodajte da se u hitnim slučajevima treba nazvati hitnu medicinsku pomoć na 194 ili jedinstveni broj 112 (ova dva broja smijete navesti i kada nisu u izvorima).
+   Ne odgovarajte općenitim "ne raspolažem podatkom" ako izvori sadrže djelomično relevantne podatke (npr. dežurstva u drugim mjestima ili redovno radno vrijeme) — iznesite ono što izvori sadrže.`;
 
 /**
  * Sastavlja korisničku poruku s kontekstom (izvorima) i pitanjem.

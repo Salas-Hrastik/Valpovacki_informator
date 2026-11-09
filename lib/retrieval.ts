@@ -108,7 +108,9 @@ export async function retrieve(
   // Doma zdravlja (Valpovo) u izbor — rerank ih dalje presloži.
   if (isHealthQuery(query)) {
     try {
-      const health = await fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold);
+      // SVI isječci (ne samo prvi): na naslovnici Doma zdravlja dežurstva su tek
+      // u drugom isječku, a stranice ambulanti/ljekarni su kratke.
+      const health = await fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold, 4);
       const have = new Set(candidates.map((c) => c.chunk_id));
       const fresh = health.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
       candidates.unshift(...fresh);
@@ -244,24 +246,30 @@ function isRecencyQuery(query: string): boolean {
   return RECENCY_PATTERNS.some((p) => q.includes(p));
 }
 
-// Prepoznavanje ZDRAVSTVENIH upita (ordinacije/ambulante/Dom zdravlja), za koje
-// ubacujemo sve stranice Doma zdravlja za Valpovo (radno vrijeme, liječnici…).
+// Prepoznavanje ZDRAVSTVENIH upita (ordinacije/ambulante/Dom zdravlja, dežurstva,
+// ljekarne), za koje ubacujemo sve zdravstvene stranice (config.healthHosts).
 const HEALTH_PATTERNS = [
   'ordinacij', 'ambulant', 'dom zdravlja', 'liječnik', 'lijecnik', 'doktor', 'dr. med',
   'ginekolog', 'pedijat', 'stomatolog', 'zubar', 'obiteljsk', 'opća medicin', 'opca medicin',
   'medicin', 'zdravstven', 'hitna',
+  // Dežurstva i ljekarne ("koji je liječnik dežuran", "kada radi apoteka")
+  'dežur', 'dezur', 'ljekarn', 'apotek', 'lijek', 'recept',
 ];
 function isHealthQuery(query: string): boolean {
   const q = query.toLowerCase();
   return HEALTH_PATTERNS.some((p) => q.includes(p));
 }
 
-/** Najnoviji dokumenti (po datumu objave) iz zadanih domena → po jedan (prvi) isječak. */
+/**
+ * Najnoviji dokumenti (po datumu objave) iz zadanih domena → prvih `chunksPerDoc`
+ * isječaka svakog dokumenta (zadano 1 = samo prvi).
+ */
 async function fetchRecentChunks(
   sb: ReturnType<typeof supabaseAdmin>,
   hosts: string[],
   limit: number,
   score: number,
+  chunksPerDoc = 1,
 ): Promise<RetrievedChunk[]> {
   const { data: docs, error } = await sb
     .from('dokumenti')
@@ -279,15 +287,19 @@ async function fetchRecentChunks(
     .order('chunk_index', { ascending: true });
   if (e2 || !parts) return [];
 
-  const firstByDoc = new Map<string, { id: string; text: string }>();
+  // Dijelovi su poredani po chunk_index → zadržavamo prvih `chunksPerDoc` po dokumentu.
+  const byDoc = new Map<string, { id: string; text: string }[]>();
   for (const p of parts as { id: string; document_id: string; text: string }[]) {
-    if (!firstByDoc.has(p.document_id)) firstByDoc.set(p.document_id, { id: p.id, text: p.text });
+    const arr = byDoc.get(p.document_id) ?? [];
+    if (arr.length < chunksPerDoc) arr.push({ id: p.id, text: p.text });
+    byDoc.set(p.document_id, arr);
   }
 
   const out: RetrievedChunk[] = [];
   for (const d of docs as { id: string; title: string; url: string; fetched_at: string }[]) {
-    const p = firstByDoc.get(d.id);
-    if (p) out.push({ chunk_id: p.id, text: p.text, title: d.title, url: d.url, fetched_at: d.fetched_at, score });
+    for (const p of byDoc.get(d.id) ?? []) {
+      out.push({ chunk_id: p.id, text: p.text, title: d.title, url: d.url, fetched_at: d.fetched_at, score });
+    }
   }
   return out;
 }
