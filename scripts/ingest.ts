@@ -154,8 +154,15 @@ async function prune(apply: boolean): Promise<void> {
   // PDF-ovi se otkrivaju praćenjem poveznica (nisu u sitemap-korpusu), pa ih
   // NIKAD ne brišemo na temelju "nije u korpusu" — inače bi prune uklonio
   // proračune/odluke/zapisnike koje smo namjerno ingestirali.
+  // Isto vrijedi za dokumente turističkog vodiča uvezene skriptom import:turizam
+  // (nisu web-stranice pa ih nema u korpusu) — njih sinkronizira sama skripta.
+  const { config } = await import('../lib/config');
+  const importBase = config.touristImportBaseUrl;
   const staleRows = existing.filter(
-    (d) => !corpus.has(d.url) && !d.url.toLowerCase().endsWith('.pdf'),
+    (d) =>
+      !corpus.has(d.url) &&
+      !d.url.toLowerCase().endsWith('.pdf') &&
+      !d.url.startsWith(`${importBase}#`),
   );
   const stale = staleRows.map((d) => d.url);
   console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);

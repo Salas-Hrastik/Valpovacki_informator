@@ -70,5 +70,29 @@
   {
     "question": "Koje sve ljekarne ima u Valpovu?",
     "expected_urls": ["ljekarne-srce.hr/ljekarne/ljekarna-valpovo", "ljekarne-kalenic.hr/lokacije"]
+  },
+  {
+    "question": "Kako mogu naručiti taksi u Valpovu?",
+    "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.taksi"]
+  },
+  {
+    "question": "Gdje ima bankomat u Valpovu?",
+    "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.bankomati"]
+  },
+  {
+    "question": "Gdje je autobusni kolodvor u Valpovu?",
+    "expected_urls": ["bus.hr/autobusni-kolodvor/valpovo", "visitlogic-mvp.vercel.app/#usluge.autobusni_prijevoz"]
+  },
+  {
+    "question": "Gdje mogu parkirati blizu dvorca?",
+    "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.parkiralista"]
+  },
+  {
+    "question": "Gdje je benzinska pumpa u Valpovu?",
+    "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.benzinske_stanice"]
+  },
+  {
+    "question": "Koji frizerski saloni postoje u Valpovu?",
+    "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.frizeraji"]
   }
 ]

@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "ingest": "tsx scripts/ingest.ts",
+    "import:turizam": "tsx scripts/import-turizam.ts",
     "ocr:check": "tsx scripts/ocr-check.ts",
     "ocr:report": "tsx scripts/ocr-report.ts",
     "rag:debug": "tsx scripts/retrieve-debug.ts",

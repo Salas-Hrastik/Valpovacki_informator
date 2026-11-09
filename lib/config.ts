@@ -38,6 +38,13 @@ const ALLOWED_HOSTS_DEFAULT = [
   'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
   // Ljekarne Kalenić — Ljekarna Valpovo, J. J. Strossmayera 12 (popis lokacija)
   'ljekarne-kalenic.hr', 'www.ljekarne-kalenic.hr',
+  // Turistički vodič (visitlogic-mvp) — dokumenti uvezeni skriptom import:turizam
+  // (ručno održavana baza: usluge, smještaj, ugostiteljstvo, sport…). Ne crawla se.
+  'visitlogic-mvp.vercel.app',
+  // Autobusni kolodvor Valpovo (adresa, telefon informacija, povezana mjesta).
+  // Lokatori pošte i banaka (posta.hr, hpb.hr, pbz.hr) učitavaju se JavaScriptom
+  // pa ih statički dohvat ne vidi — te podatke pokriva turistički vodič.
+  'bus.hr',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -82,6 +89,7 @@ const SEED_URLS_DEFAULT = [
   'https://ljekarne-srce.hr/ljekarne/ljekarna-valpovo/',
   // Ljekarne Kalenić — stranica lokacija (uključuje valpovačku ljekarnu)
   'https://ljekarne-kalenic.hr/lokacije/',
+  'https://bus.hr/autobusni-kolodvor/valpovo/autobusni-kolodvor-valpovo-informacije-vozni-red/',
   'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
@@ -158,6 +166,9 @@ export const config = {
   rerankModel: process.env.RERANK_MODEL || 'claude-haiku-4-5',
 
   allowedHosts: list('ALLOWED_HOSTS', ALLOWED_HOSTS_DEFAULT),
+  // Osnovni URL uvezenih dokumenata turističkog vodiča (npm run import:turizam);
+  // dokument kategorije ima URL `${touristImportBaseUrl}#<kategorija>`.
+  touristImportBaseUrl: process.env.TOURIST_IMPORT_BASE_URL || 'https://visitlogic-mvp.vercel.app/',
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
   seedUrls: list('SEED_URLS', SEED_URLS_DEFAULT),
   // Domene "vijesti/događanja" — koriste se za dohvat po SVJEŽINI (najnovije
