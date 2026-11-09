@@ -66,5 +66,9 @@
   {
     "question": "Kada radi obiteljski liječnik u Valpovu?",
     "expected_urls": ["dzobz.hr/obiteljska_grad_valpovo"]
+  },
+  {
+    "question": "Koje sve ljekarne ima u Valpovu?",
+    "expected_urls": ["ljekarne-srce.hr/ljekarne/ljekarna-valpovo", "ljekarne-kalenic.hr/lokacije"]
   }
 ]
