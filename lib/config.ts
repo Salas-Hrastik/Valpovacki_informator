@@ -169,6 +169,8 @@ export const config = {
   // Osnovni URL uvezenih dokumenata turističkog vodiča (npm run import:turizam);
   // dokument kategorije ima URL `${touristImportBaseUrl}#<kategorija>`.
   touristImportBaseUrl: process.env.TOURIST_IMPORT_BASE_URL || 'https://visitlogic-mvp.vercel.app/',
+  // Odakle dnevni cron povlači bazu turističkog vodiča (JSON). Prazno = isključeno.
+  touristSourceUrl: process.env.TOURIST_SOURCE_URL ?? 'https://visitlogic-mvp.vercel.app/api/baza',
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
   seedUrls: list('SEED_URLS', SEED_URLS_DEFAULT),
   // Domene "vijesti/događanja" — koriste se za dohvat po SVJEŽINI (najnovije

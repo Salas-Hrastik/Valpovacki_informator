@@ -6,6 +6,8 @@
  *    izvora o Valpovu uz kratak prozor svježine (dailyFreshDays). Novi sadržaj
  *    ima prioritet; veliki se korpus osvježava rotacijom kroz uzastopna pokretanja.
  *  - Nedjeljom 02:00 UTC: bez parametra — veliki prolaz svih izvora (rezerva).
+ *  Oba prolaza najprije sinkroniziraju bazu turističkog vodiča (JSON s
+ *  config.touristSourceUrl → lib/ingest/tourist.ts); greška tu ne ruši ingest.
  *
  * Autorizacija:
  *  - Vercel Cron šalje zaglavlje "Authorization: Bearer <CRON_SECRET>" kada je
@@ -19,6 +21,7 @@
  */
 import { config } from '@/lib/config';
 import { runIngest } from '@/lib/ingest/pipeline';
+import { fetchTouristDb, syncTouristDocs, type TouristSyncStats } from '@/lib/ingest/tourist';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -66,11 +69,27 @@ async function handle(req: Request): Promise<Response> {
   const onlyHosts = explicitHosts ?? undefined; // dnevno i nedjeljno = SVI izvori
   const freshDays = explicitHosts ? 0 : isDaily ? config.dailyFreshDays : undefined;
 
-  // 280 s vlastitog limita ostavlja prostor za uredno zatvaranje prije 300 s
-  const stats = await runIngest({ deadlineMs: 280_000, onlyUrls, onlyHosts, freshDays });
+  const startedAt = Date.now();
+
+  // Turistički vodič (visitlogic-mvp): samo u redovnim (cron) prolazima, ne kod
+  // ciljanih ?only= / ?hosts= pokretanja. Greška se bilježi, ingest se nastavlja.
+  let tourist: TouristSyncStats | { error: string } | undefined;
+  if (!onlyUrls && !explicitHosts && config.touristSourceUrl) {
+    try {
+      tourist = await syncTouristDocs(await fetchTouristDb());
+    } catch (e) {
+      console.error('[ingest] Turistički vodič nije sinkroniziran:', e);
+      tourist = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  // 280 s vlastitog limita (umanjeno za vrijeme sinkronizacije vodiča) ostavlja
+  // prostor za uredno zatvaranje prije 300 s.
+  const deadlineMs = 280_000 - (Date.now() - startedAt);
+  const stats = await runIngest({ deadlineMs, onlyUrls, onlyHosts, freshDays });
 
   const scopeLabel = onlyUrls ? 'only' : (scope ?? (explicitHosts ? 'hosts' : 'full'));
-  return new Response(JSON.stringify({ ok: true, scope: scopeLabel, stats }), {
+  return new Response(JSON.stringify({ ok: true, scope: scopeLabel, tourist, stats }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }
