@@ -94,5 +94,9 @@
   {
     "question": "Koji frizerski saloni postoje u Valpovu?",
     "expected_urls": ["visitlogic-mvp.vercel.app/#usluge.frizeraji"]
+  },
+  {
+    "question": "Što je bilo na dnevnom redu na zadnjem gradskom vijeću?",
+    "expected_urls": ["Poziv-za-13.-sjednicu", "poziv-13-sj-g-v-2026"]
   }
 ]
