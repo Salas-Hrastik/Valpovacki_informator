@@ -119,6 +119,21 @@ export async function retrieve(
     }
   }
 
+  // 3d) Lokalne usluge (taksi, kolodvor, pošta, banke, parking, frizeri…): kratki
+  // dokumenti turističkog vodiča inače ispadnu pred dugačkim PDF-ovima (prostorni
+  // planovi, glasnici) koji usput spominju iste riječi — ubacujemo pogođene kategorije.
+  const serviceUrls = serviceTopicUrls(query);
+  if (serviceUrls.length > 0) {
+    try {
+      const svc = await fetchChunksByUrls(sb, serviceUrls, 6, threshold);
+      const have = new Set(candidates.map((c) => c.chunk_id));
+      const fresh = svc.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+      candidates.unshift(...fresh);
+    } catch (e) {
+      console.error('[retrieval] dohvat lokalnih usluga nije uspio:', e);
+    }
+  }
+
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
@@ -258,6 +273,84 @@ const HEALTH_PATTERNS = [
 function isHealthQuery(query: string): boolean {
   const q = query.toLowerCase();
   return HEALTH_PATTERNS.some((p) => q.includes(p));
+}
+
+// Teme LOKALNIH USLUGA → kategorije turističkog vodiča (import:turizam) i ostali
+// izravni izvori. Uzorci se traže kao podniz upita (mala slova).
+const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] = [
+  { patterns: ['taksi', 'taxi'], keys: ['usluge.taksi'] },
+  {
+    patterns: ['autobus', 'kolodvor', 'vozni red', 'prijevoz'],
+    keys: ['usluge.autobusni_prijevoz', 'usluge.zeljeznicki_prijevoz'],
+    urls: ['https://bus.hr/autobusni-kolodvor/valpovo/autobusni-kolodvor-valpovo-informacije-vozni-red/'],
+  },
+  { patterns: ['vlak', 'željezni', 'zeljezni'], keys: ['usluge.zeljeznicki_prijevoz'] },
+  { patterns: ['pošt', 'posta', 'paket'], keys: ['usluge.banke_i_posta'] },
+  { patterns: ['bank', 'novac', 'gotovin'], keys: ['usluge.banke_i_posta', 'usluge.bankomati'] },
+  { patterns: ['parkir', 'parking'], keys: ['usluge.parkiralista'] },
+  { patterns: ['benzin', 'gorivo', 'pumpa', 'tankat'], keys: ['usluge.benzinske_stanice'] },
+  { patterns: ['frizer', 'šišanj', 'sisanj', 'barber'], keys: ['usluge.frizeraji'] },
+  { patterns: ['kozmeti', 'manikur', 'pedikur', 'uljepš', 'uljeps'], keys: ['usluge.saloni_za_uljepsavanje'] },
+  { patterns: ['autoservis', 'auto servis', 'auto-servis', 'mehaničar', 'mehanicar', 'vulkanizer'], keys: ['usluge.auto_servisi'] },
+  { patterns: ['trgovin', 'dućan', 'ducan', 'shopping', 'kupiti', 'kupovin'], keys: ['usluge.trgovine', 'kupovina.trgovacki_centri', 'kupovina.supermarketi', 'kupovina.specijalizirane_trgovine'] },
+  { patterns: ['tržnic', 'trznic', 'opg', 'domaći proizvod', 'domaci proizvod', 'suvenir'], keys: ['kupovina.trznica', 'kupovina.opg', 'kupovina.lokalni_i_suveniri'] },
+  { patterns: ['teretan', 'fitness', 'gym'], keys: ['sport.teretane'] },
+  { patterns: ['apartman', 'smještaj', 'smjestaj', 'prenoć', 'prenoc', 'hotel', 'spavat', 'noćen', 'nocen'], keys: ['smjestaj.hoteli', 'smjestaj.apartmani', 'smjestaj.sobe', 'smjestaj.prenocista', 'smjestaj.ruralni_smjestaj'] },
+  { patterns: ['restoran', 'kafić', 'kafic', 'caffe', 'pizz', 'pekar', 'jesti', 'ručak', 'rucak', 'večer', 'veceru', 'burger', 'fast food'], keys: ['gastronomija'] },
+  { patterns: ['bicikl', 'biciklist'], keys: ['priroda.biciklizam'] },
+  { patterns: ['ribolov', 'pecanj', 'pecati'], keys: ['priroda.ribolov'] },
+];
+
+/** URL-ovi dokumenata koje treba ubaciti za upit o lokalnim uslugama (bez duplikata). */
+function serviceTopicUrls(query: string): string[] {
+  const q = query.toLowerCase();
+  const base = config.touristImportBaseUrl;
+  const out = new Set<string>();
+  for (const t of SERVICE_TOPICS) {
+    if (!t.patterns.some((p) => q.includes(p))) continue;
+    for (const k of t.keys) out.add(`${base}#${k}`);
+    for (const u of t.urls ?? []) out.add(u);
+  }
+  return [...out];
+}
+
+/** Isječci zadanih dokumenata (po URL-u), najviše `chunksPerDoc` po dokumentu. */
+async function fetchChunksByUrls(
+  sb: ReturnType<typeof supabaseAdmin>,
+  urls: string[],
+  chunksPerDoc: number,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const { data: docs, error } = await sb
+    .from('dokumenti')
+    .select('id, title, url, fetched_at')
+    .in('url', urls);
+  if (error || !docs || docs.length === 0) return [];
+
+  const { data: parts, error: e2 } = await sb
+    .from('dijelovi')
+    .select('id, document_id, text, chunk_index')
+    .in('document_id', docs.map((d: { id: string }) => d.id))
+    .order('chunk_index', { ascending: true });
+  if (e2 || !parts) return [];
+
+  const byDoc = new Map<string, { id: string; text: string }[]>();
+  for (const p of parts as { id: string; document_id: string; text: string }[]) {
+    const arr = byDoc.get(p.document_id) ?? [];
+    if (arr.length < chunksPerDoc) arr.push({ id: p.id, text: p.text });
+    byDoc.set(p.document_id, arr);
+  }
+  // Redoslijed kao u `urls` (prva tema ima prednost).
+  const order = new Map(urls.map((u, i) => [u, i]));
+  const out: RetrievedChunk[] = [];
+  for (const d of [...(docs as { id: string; title: string; url: string; fetched_at: string }[])].sort(
+    (a, b) => (order.get(a.url) ?? 0) - (order.get(b.url) ?? 0),
+  )) {
+    for (const p of byDoc.get(d.id) ?? []) {
+      out.push({ chunk_id: p.id, text: p.text, title: d.title, url: d.url, fetched_at: d.fetched_at, score });
+    }
+  }
+  return out;
 }
 
 /**
