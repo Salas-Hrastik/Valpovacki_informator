@@ -25,8 +25,8 @@ export function isAllowedHost(url: string, hosts: string[] = config.allowedHosts
 /**
  * Filtar po domeni: za domene navedene u config.hostIncludeFilters zadržavamo SAMO
  * URL-ove koji sadrže barem jedan zadani podniz (npr. dzobz.hr → "valpovo", da iz
- * županijskog Doma zdravlja uzmemo isključivo valpovačke ambulante). Ostale domene
- * nemaju ograničenje.
+ * županijskog Doma zdravlja uzmemo isključivo valpovačke ambulante). Naslovnica
+ * (putanja "/") uvijek prolazi. Ostale domene nemaju ograničenje.
  */
 export function passesHostInclude(
   url: string,
@@ -36,6 +36,9 @@ export function passesHostInclude(
     const host = new URL(url).hostname.toLowerCase();
     const subs = filters[host];
     if (!subs || subs.length === 0) return true;
+    // Naslovnica filtrirane domene uvijek prolazi (npr. dzobz.hr/ nosi dežurstva).
+    const path = new URL(url).pathname;
+    if (path === '/' || path === '') return true;
     const u = url.toLowerCase();
     return subs.some((s) => u.includes(s.toLowerCase()));
   } catch {

@@ -46,5 +46,25 @@
   {
     "question": "Koje kulturne događaje organizira ustanova za kulturu u Valpovu?",
     "expected_urls": ["ustanova.valpovo.hr"]
+  },
+  {
+    "question": "Koji je liječnik dežuran?",
+    "expected_urls": ["dzobz.hr/"]
+  },
+  {
+    "question": "Gdje je dežurstvo vikendom ako se razbolim?",
+    "expected_urls": ["dzobz.hr/"]
+  },
+  {
+    "question": "Koje je radno vrijeme apoteke u Valpovu?",
+    "expected_urls": ["ljekarne-srce.hr/ljekarne/ljekarna-valpovo"]
+  },
+  {
+    "question": "Kada radi ljekarna subotom?",
+    "expected_urls": ["ljekarne-srce.hr/ljekarne/ljekarna-valpovo"]
+  },
+  {
+    "question": "Kada radi obiteljski liječnik u Valpovu?",
+    "expected_urls": ["dzobz.hr/obiteljska_grad_valpovo"]
   }
 ]
