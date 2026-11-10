@@ -106,5 +106,13 @@
   {
     "question": "Ima li dežurni veterinar u Valpovu?",
     "expected_urls": ["veterinarskastanicavalpovo.hr"]
+  },
+  {
+    "question": "Tko u Valpovu radi vodoinstalacije?",
+    "expected_urls": ["pretrazivac-obrta.gov.hr/#elektro_vodo"]
+  },
+  {
+    "question": "Trebam čišćenje stana u Valpovu, koga mogu nazvati?",
+    "expected_urls": ["pretrazivac-obrta.gov.hr/#ciscenje"]
   }
 ]
