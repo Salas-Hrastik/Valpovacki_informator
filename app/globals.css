@@ -349,14 +349,30 @@ body {
   border: none;
   background: var(--boja-pozadina);
 }
-.link-modal-note {
-  margin: 0;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  color: var(--boja-tekst-prigusen);
-  border-top: 1px solid var(--boja-rub);
-  text-align: center;
+.link-modal-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  background: #fff6db;
+  border-bottom: 1px solid #ecd58a;
+  color: #5a4500;
+  font-size: 0.92rem;
+  font-weight: 500;
 }
+.link-modal-hint-btn {
+  flex-shrink: 0;
+  background: var(--boja-primarna);
+  color: var(--boja-bijela);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.link-modal-hint-btn:hover { background: var(--boja-primarna-tamna); }
 
 .chat-input {
   display: flex;
@@ -504,6 +520,8 @@ textarea:focus-visible {
   .link-modal { height: 92vh; max-width: 100%; }
   .link-modal-url { font-size: 0.78rem; }
   .link-modal-open { font-size: 0.82rem; }
+  .link-modal-hint { font-size: 0.85rem; }
+  .link-modal-hint-btn { width: 100%; text-align: center; }
 }
 
 /* Vrlo uski telefoni: dodatno skupi gumbe da unos ostane upotrebljiv */
