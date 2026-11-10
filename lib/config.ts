@@ -45,6 +45,9 @@ const ALLOWED_HOSTS_DEFAULT = [
   // Lokatori pošte i banaka (posta.hr, hpb.hr, pbz.hr) učitavaju se JavaScriptom
   // pa ih statički dohvat ne vidi — te podatke pokriva turistički vodič.
   'bus.hr',
+  // Veterinarska stanica Valpovo — radno vrijeme ambulante i velike prakse,
+  // dežurni veterinar 0–24, telefoni, usluge (jednostranična WordPress stranica).
+  'veterinarskastanicavalpovo.hr', 'www.veterinarskastanicavalpovo.hr',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -90,6 +93,7 @@ const SEED_URLS_DEFAULT = [
   // Ljekarne Kalenić — stranica lokacija (uključuje valpovačku ljekarnu)
   'https://ljekarne-kalenic.hr/lokacije/',
   'https://bus.hr/autobusni-kolodvor/valpovo/autobusni-kolodvor-valpovo-informacije-vozni-red/',
+  'https://veterinarskastanicavalpovo.hr/',
   'https://crvenikrizvalpovo.hr/',
   // Župni ured Valpovo (Wix) — sjedište i stranica „Župni ured" (kontakt, raspored misa…)
   'https://zupavalpo.wixsite.com/zupa-valpovo',
@@ -115,6 +119,8 @@ const EXCLUDE_URL_PATTERNS_DEFAULT = [
   // NAPOMENA: stranice događanja (/events/, /eventi/, /event/) NAMJERNO se više
   // ne isključuju — nose datume manifestacija (npr. Ljeto valpovačko).
   '/rl_gallery/', '/kino-korner/',
+  // Predlošci WordPressa bez sadržaja (npr. "Hello world!" na veterinarskoj stanici).
+  '/hello-world',
   '/program-category/', '/kategorija-djelatnika/',
   // Stare datumske arhive vijesti: izbacujemo godine <= 2024 (zadržavamo 2025./2026.).
   // Uzorak "re:" se tretira kao regex; traži /GODINA/ omeđenu kosim crtama.

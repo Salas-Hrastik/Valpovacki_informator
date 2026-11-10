@@ -98,5 +98,13 @@
   {
     "question": "Što je bilo na dnevnom redu na zadnjem gradskom vijeću?",
     "expected_urls": ["Poziv-za-13.-sjednicu", "poziv-13-sj-g-v-2026"]
+  },
+  {
+    "question": "Kada radi veterinarska stanica u Valpovu?",
+    "expected_urls": ["veterinarskastanicavalpovo.hr"]
+  },
+  {
+    "question": "Ima li dežurni veterinar u Valpovu?",
+    "expected_urls": ["veterinarskastanicavalpovo.hr"]
   }
 ]
