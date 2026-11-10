@@ -3,8 +3,11 @@
  *
  *   npm run import:obrti -- obrti.csv --dry-run                # pregled: stupci, broj obrta, dokumenti
  *   npm run import:obrti -- obrti.csv --datum 15.12.2026.      # uvoz (datum = stanje registra)
+ *   npm run import:obrti -- Obrtnici_2026.docx --datum 10.11.2026.   # Word tablica popisa obrtnika
  *
- * Excel: Datoteka → Spremi kao → "CSV UTF-8". Logika: lib/ingest/obrti.ts.
+ * Excel: Datoteka → Spremi kao → "CSV UTF-8". Svaki obrt dobiva poveznicu na Google
+ * karte; web-sjedišta dolaze iz data/obrti-web.json (npx tsx scripts/find-obrti-web.ts).
+ * Logika: lib/ingest/obrti.ts.
  */
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -28,11 +31,12 @@ async function main(): Promise<void> {
   if (!file) throw new Error('Uporaba: npm run import:obrti -- <datoteka.csv> [--datum DD.MM.GGGG.] [--dry-run]');
 
   const { config } = await import('../lib/config');
-  const { parseObrti, buildObrtiDocs, syncObrtiDocs } = await import('../lib/ingest/obrti');
+  const { buildObrtiDocs, syncObrtiDocs } = await import('../lib/ingest/obrti');
+  const { loadObrti } = await import('./obrti-source');
 
-  const { obrti, skipped, columns } = parseObrti(readFileSync(resolve(file), 'utf8'));
+  const { obrti, skipped, columns, withWeb } = await loadObrti(file);
   console.log(`[obrti] Prepoznati stupci: ${columns.join(', ')}`);
-  console.log(`[obrti] ${obrti.length} aktivnih obrta s područja Grada Valpova (preskočeno: ${skipped}).`);
+  console.log(`[obrti] ${obrti.length} aktivnih obrta s područja Grada Valpova (preskočeno: ${skipped}, s webom: ${withWeb}).`);
   const docs = buildObrtiDocs(obrti, datum);
   console.log(`[obrti] ${docs.length} dokumenata (po djelatnosti):`);
   for (const d of docs) {
