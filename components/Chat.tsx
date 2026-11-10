@@ -49,6 +49,11 @@ function formatDateHr(iso: string): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}.`;
 }
 
+
+/** Poveznice koje se ne mogu prikazati u skočnom pregledniku (odbijaju ugradnju u okvir). */
+const NO_EMBED =
+  /^https?:\/\/((www\.|maps\.)?google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|([a-z0-9-]+\.)?(facebook|instagram|youtube|tiktok|x|twitter|linkedin)\.com|youtu\.be)/i;
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -139,6 +144,9 @@ export default function Chat() {
   // umjesto u novoj kartici. Vraća handler za onClick koji spriječi zadanu navigaciju.
   const openLink = (url?: string) => (e: React.MouseEvent) => {
     if (!url) return;
+    // Stranice koje sigurno odbijaju ugradnju (Google karte, društvene mreže) idu
+    // izravno u novu karticu — <a target="_blank"> to radi sam.
+    if (NO_EMBED.test(url)) return;
     e.preventDefault();
     setLinkPreview(url);
   };
@@ -832,6 +840,19 @@ export default function Chat() {
                 ✕
               </button>
             </div>
+            <div className="link-modal-hint">
+              <span>
+                Ne vidite stranicu ispod? Neke je stranice moguće otvoriti samo u novoj kartici.
+              </span>
+              <a
+                className="link-modal-hint-btn"
+                href={linkPreview}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Otvori u novoj kartici ↗
+              </a>
+            </div>
             <iframe
               className="link-modal-frame"
               src={linkPreview}
@@ -839,10 +860,6 @@ export default function Chat() {
               sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
               referrerPolicy="no-referrer"
             />
-            <p className="link-modal-note">
-              Ako se stranica ne prikaže, neke je stranice nije moguće ugraditi —
-              upotrijebite „Otvori u novoj kartici”.
-            </p>
           </div>
         </div>
       )}
