@@ -157,12 +157,13 @@ async function prune(apply: boolean): Promise<void> {
   // Isto vrijedi za dokumente turističkog vodiča uvezene skriptom import:turizam
   // (nisu web-stranice pa ih nema u korpusu) — njih sinkronizira sama skripta.
   const { config } = await import('../lib/config');
-  const importBase = config.touristImportBaseUrl;
+  // Isto za popis obrta (import:obrti).
+  const importBases = [config.touristImportBaseUrl, config.obrtiImportBaseUrl];
   const staleRows = existing.filter(
     (d) =>
       !corpus.has(d.url) &&
       !d.url.toLowerCase().endsWith('.pdf') &&
-      !d.url.startsWith(`${importBase}#`),
+      !importBases.some((b) => d.url.startsWith(`${b}#`)),
   );
   const stale = staleRows.map((d) => d.url);
   console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);

@@ -48,6 +48,9 @@ const ALLOWED_HOSTS_DEFAULT = [
   // Veterinarska stanica Valpovo — radno vrijeme ambulante i velike prakse,
   // dežurni veterinar 0–24, telefoni, usluge (jednostranična WordPress stranica).
   'veterinarskastanicavalpovo.hr', 'www.veterinarskastanicavalpovo.hr',
+  // Obrtni registar — popis obrta uvezen iz službene datoteke (import:obrti).
+  // NE crawla se (nije u sitemapovima ni seedovima; stranica blokira automatski pristup).
+  'pretrazivac-obrta.gov.hr',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.
@@ -175,6 +178,9 @@ export const config = {
   // Osnovni URL uvezenih dokumenata turističkog vodiča (npm run import:turizam);
   // dokument kategorije ima URL `${touristImportBaseUrl}#<kategorija>`.
   touristImportBaseUrl: process.env.TOURIST_IMPORT_BASE_URL || 'https://visitlogic-mvp.vercel.app/',
+  // Popis obrta (službena CSV datoteka, `npm run import:obrti`): dokument po djelatnosti
+  // ima URL `${obrtiImportBaseUrl}#<djelatnost>` — citat vodi na službeni pretraživač.
+  obrtiImportBaseUrl: process.env.OBRTI_IMPORT_BASE_URL || 'https://pretrazivac-obrta.gov.hr/',
   // Odakle dnevni cron povlači bazu turističkog vodiča (JSON). Prazno = isključeno.
   touristSourceUrl: process.env.TOURIST_SOURCE_URL ?? 'https://visitlogic-mvp.vercel.app/api/baza',
   sitemapUrls: list('SITEMAP_URLS', SITEMAP_URLS_DEFAULT),
