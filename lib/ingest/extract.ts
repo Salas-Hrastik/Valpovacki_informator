@@ -110,6 +110,11 @@ export async function extractFromImage(
       `ocr-image timeout (${config.pdfParseTimeoutMs} ms)`,
     ),
   );
+  // Model ponekad umjesto praznog odgovora opiše sliku ("(Na slici nema čitljivog
+  // teksta — …)") — takav opis nije sadržaj, pa ga odbacujemo (prazan tekst se preskače).
+  if (/^\(?\s*na slici nema (čitljivog|nikakvog)? ?tekst/i.test(text)) {
+    return { title: fileNameFromUrl(url), text: '', publishedAt: null, ocr: true };
+  }
   // Naslov iz sadržaja slike (npr. naziv događaja + datum s plakata) — korisniji
   // za prikaz izvora i za dohvat nego ime datoteke; padamo na ime datoteke ako je
   // pročitano premalo teksta.

@@ -295,6 +295,15 @@ function isHealthQuery(query: string): boolean {
 const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] = [
   { patterns: ['taksi', 'taxi'], keys: ['usluge.taksi'] },
   {
+    patterns: [
+      'veterin', 'ljubim', 'životinj', 'zivotinj', 'mikročip', 'mikrocip', 'bjesnoć', 'bjesnoc',
+      ' pas ', ' psa ', ' psu ', ' psi ', ' pse ', ' psom ', 'mačk', 'mack', 'mačak', 'macak',
+      ' krav', ' svinj', ' konj', ' ovc', ' koz', ' perad', 'štene', 'stene', 'stenad',
+    ],
+    keys: [],
+    urls: ['https://veterinarskastanicavalpovo.hr/'],
+  },
+  {
     patterns: ['autobus', 'kolodvor', 'vozni red', 'prijevoz'],
     keys: ['usluge.autobusni_prijevoz', 'usluge.zeljeznicki_prijevoz'],
     urls: ['https://bus.hr/autobusni-kolodvor/valpovo/autobusni-kolodvor-valpovo-informacije-vozni-red/'],
@@ -318,7 +327,8 @@ const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] 
 
 /** URL-ovi dokumenata koje treba ubaciti za upit o lokalnim uslugama (bez duplikata). */
 function serviceTopicUrls(query: string): string[] {
-  const q = query.toLowerCase();
+  // Razmaci oko upita i umjesto interpunkcije → uzorci s razmacima (' pas ') hvataju cijele riječi.
+  const q = ` ${query.toLowerCase().replace(/[.,!?;:()"]/g, ' ')} `;
   const base = config.touristImportBaseUrl;
   const out = new Set<string>();
   for (const t of SERVICE_TOPICS) {
