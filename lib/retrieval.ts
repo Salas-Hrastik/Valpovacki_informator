@@ -292,8 +292,9 @@ function isHealthQuery(query: string): boolean {
 
 // Teme LOKALNIH USLUGA → kategorije turističkog vodiča (import:turizam) i ostali
 // izravni izvori. Uzorci se traže kao podniz upita (mala slova).
-const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] = [
-  { patterns: ['taksi', 'taxi'], keys: ['usluge.taksi'] },
+// `obrti` = skupine iz službenog popisa obrta (import:obrti, ključ = slug naziva skupine).
+const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[]; obrti?: string[] }[] = [
+  { patterns: ['taksi', 'taxi'], keys: ['usluge.taksi'], obrti: ['prijevoz_i_taksi'] },
   {
     patterns: [
       'veterin', 'ljubim', 'životinj', 'zivotinj', 'mikročip', 'mikrocip', 'bjesnoć', 'bjesnoc',
@@ -302,6 +303,7 @@ const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] 
     ],
     keys: [],
     urls: ['https://veterinarskastanicavalpovo.hr/'],
+    obrti: ['kucni_ljubimci_sisanje_i_njega_pasa'],
   },
   {
     patterns: ['autobus', 'kolodvor', 'vozni red', 'prijevoz'],
@@ -313,15 +315,32 @@ const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[] }[] 
   { patterns: ['bank', 'novac', 'gotovin'], keys: ['usluge.banke_i_posta', 'usluge.bankomati'] },
   { patterns: ['parkir', 'parking'], keys: ['usluge.parkiralista'] },
   { patterns: ['benzin', 'gorivo', 'pumpa', 'tankat'], keys: ['usluge.benzinske_stanice'] },
-  { patterns: ['frizer', 'šišanj', 'sisanj', 'barber'], keys: ['usluge.frizeraji'] },
-  { patterns: ['kozmeti', 'manikur', 'pedikur', 'uljepš', 'uljeps'], keys: ['usluge.saloni_za_uljepsavanje'] },
-  { patterns: ['autoservis', 'auto servis', 'auto-servis', 'mehaničar', 'mehanicar', 'vulkanizer'], keys: ['usluge.auto_servisi'] },
-  { patterns: ['trgovin', 'dućan', 'ducan', 'shopping', 'kupiti', 'kupovin'], keys: ['usluge.trgovine', 'kupovina.trgovacki_centri', 'kupovina.supermarketi', 'kupovina.specijalizirane_trgovine'] },
+  { patterns: ['frizer', 'šišanj', 'sisanj', 'barber'], keys: ['usluge.frizeraji'], obrti: ['frizerski_saloni_kozmetika_i_masaza'] },
+  { patterns: ['kozmeti', 'manikur', 'pedikur', 'uljepš', 'uljeps', 'masaž', 'masaz', 'nokt', 'depilac', 'trepavic', 'šmink', 'smink'], keys: ['usluge.saloni_za_uljepsavanje'], obrti: ['frizerski_saloni_kozmetika_i_masaza'] },
+  { patterns: ['autoservis', 'auto servis', 'auto-servis', 'mehaničar', 'mehanicar', 'vulkaniz', ' auto ', ' auta ', ' autu ', 'automobil', 'vozil', 'limar', 'lakir', ' gume', ' guma', 'traktor', 'pomoć na cesti', 'šlep', 'slep'], keys: ['usluge.auto_servisi'], obrti: ['auto_servisi_i_vozila'] },
+  { patterns: ['trgovin', 'dućan', 'ducan', 'shopping', 'kupiti', 'kupovin'], keys: ['usluge.trgovine', 'kupovina.trgovacki_centri', 'kupovina.supermarketi', 'kupovina.specijalizirane_trgovine'], obrti: ['trgovina'] },
   { patterns: ['tržnic', 'trznic', 'opg', 'domaći proizvod', 'domaci proizvod', 'suvenir'], keys: ['kupovina.trznica', 'kupovina.opg', 'kupovina.lokalni_i_suveniri'] },
   { patterns: ['teretan', 'fitness', 'gym'], keys: ['sport.teretane'] },
-  { patterns: ['apartman', 'smještaj', 'smjestaj', 'prenoć', 'prenoc', 'hotel', 'spavat', 'noćen', 'nocen'], keys: ['smjestaj.hoteli', 'smjestaj.apartmani', 'smjestaj.sobe', 'smjestaj.prenocista', 'smjestaj.ruralni_smjestaj'] },
-  { patterns: ['restoran', 'kafić', 'kafic', 'caffe', 'pizz', 'pekar', 'jesti', 'ručak', 'rucak', 'večer', 'veceru', 'burger', 'fast food'], keys: ['gastronomija'] },
+  { patterns: ['apartman', 'smještaj', 'smjestaj', 'prenoć', 'prenoc', 'hotel', 'spavat', 'noćen', 'nocen'], keys: ['smjestaj.hoteli', 'smjestaj.apartmani', 'smjestaj.sobe', 'smjestaj.prenocista', 'smjestaj.ruralni_smjestaj'], obrti: ['smjestaj_i_iznajmljivanje'] },
+  { patterns: ['restoran', 'kafić', 'kafic', 'caffe', 'pizz', 'pekar', 'jesti', 'ručak', 'rucak', 'večer', 'veceru', 'burger', 'fast food', 'catering', 'ketering'], keys: ['gastronomija'], obrti: ['ugostiteljstvo_kafici_restorani_catering', 'proizvodnja_i_prodaja_hrane_pekare_mesnice_slastice'] },
   { patterns: ['bicikl', 'biciklist'], keys: ['priroda.biciklizam'] },
+  // Obrti — razgovorni izrazi ("spremanje kuće", "majstor za bojler"…) koje vektorska
+  // pretraga ne poveže sa službenim nazivima djelatnosti.
+  { patterns: ['čišćenj', 'ciscenj', 'čistit', 'cistit', 'spreman', 'spremačic', 'spremacic', 'pospreman', 'čistačic', 'cistacic', 'pranje', 'oprati', 'odštop', 'odstop', 'odvod', 'kanalizac'], keys: [], obrti: ['ciscenje_odrzavanje_i_popravci'] },
+  { patterns: ['popravak', 'popravk', 'popravit', 'servis', 'kvar', 'pokvar', 'perilic', 'hladnjak', 'frižider', 'frizider', 'kućansk', 'kucansk', 'rashladn'], keys: [], obrti: ['ciscenje_odrzavanje_i_popravci', 'elektro_vodo_i_plinoinstalacije_grijanje_i_klimatizacija'] },
+  { patterns: ['vodoinst', 'vodoinstalater', 'cijev', 'slavin', 'bojler', 'curi', 'grijanj', 'plin', 'klim', 'struj', 'elektri', 'instalac', 'instalater', 'solar', 'dimnjak', 'dimnjač', 'dimnjac', 'toplinsk'], keys: [], obrti: ['elektro_vodo_i_plinoinstalacije_grijanje_i_klimatizacija'] },
+  { patterns: ['građevin', 'gradevin', 'zidar', 'keramič', 'keramic', 'pločic', 'plocic', 'fasad', 'krov', 'ličil', 'licil', 'soboslik', 'bojanje zid', 'gips', 'knauf', 'suha gradnja', 'suhe gradnje', 'renov', 'adaptac', 'bager', 'iskop', 'parket', 'podov', 'izolac', 'roletn', 'rolet', 'bunar', 'kuću graditi', 'gradnj'], keys: [], obrti: ['gradevinski_i_zavrsni_radovi'] },
+  { patterns: ['stolar', 'bravar', 'prozor', 'vrata', 'namještaj', 'namjestaj', 'ograd', 'zavariv', 'pvc', ' alu ', 'metal', 'tokar', 'cnc'], keys: [], obrti: ['stolarija_bravarija_i_obrada_metala'] },
+  { patterns: ['selidb', 'seliti', 'dostav', 'kombi', 'prijevoz teret', 'kamion'], keys: [], obrti: ['prijevoz_i_taksi'] },
+  { patterns: ['računovod', 'racunovod', 'knjigovod', 'savjetov', 'prijevod', 'prevodit', 'prevođ', 'prevod', 'osiguranj', 'konzalt', 'consult', 'zapošljav', 'zaposljav'], keys: [], obrti: ['racunovodstvo_savjetovanje_i_poslovne_usluge'] },
+  { patterns: ['web stranic', 'izrada web', 'računal', 'racunal', 'laptop', 'programer', 'programir', 'aplikacij', 'dizajn', 'marketing', 'reklam', 'fotograf', 'snimanj', 'video', 'tisak', 'print', 'društvene mreže', 'drustvene mreze', 'informatič', 'informatic', 'ai asistent', 'chatbot'], keys: [], obrti: ['informatika_dizajn_marketing_i_mediji'] },
+  { patterns: ['glazb', 'bend', 'svirk', 'pjevač', 'pjevac', ' dj ', 'animator', 'rođendan', 'rodendan', 'proslav', 'zabav', 'dekor', 'rukotvor', 'umjetni', 'tambur'], keys: [], obrti: ['kreativne_djelatnosti_umjetnost_glazba_i_zabava'] },
+  { patterns: ['trener', 'trening', 'poduk', 'instrukc', 'tečaj', 'tecaj', 'vježb', 'vjezb', 'joga', 'pilates', 'čuvanje djece', 'cuvanje djece', 'dadilj', 'čuvalic', 'cuvalic', 'sport'], keys: [], obrti: ['sport_rekreacija_i_poduka'] },
+  { patterns: ['fizioterap', 'terapij', 'rehabilit', 'leđa', 'ledja'], keys: [], obrti: ['zdravlje_i_terapija', 'frizerski_saloni_kozmetika_i_masaza'] },
+  { patterns: ['cvijeć', 'cvijec', 'cvjeć', 'cvjec', 'buket', 'grobov', 'grobnic', 'vijenac', 'vijenc', 'klesar', 'spomenik', 'pogreb'], keys: [], obrti: ['cvjecarne_i_odrzavanje_grobova'] },
+  { patterns: ['krojač', 'krojac', 'šivanj', 'sivanj', 'sašiti', 'sasiti', 'zlatar', 'urar', 'sat ', 'optičar', 'opticar', 'naočal', 'naocal', 'ključ', 'kljuc', 'postolar', 'cipel', 'vez '], keys: [], obrti: ['krojaci_zlatari_opticari_i_obrtnicke_usluge'] },
+  { patterns: ['vrtlar', ' vrt ', ' vrta ', ' vrtu ', 'košnj', 'kosnj', 'kositi', 'travnjak', 'trava', 'drveć', 'drvec', 'orezivanj', 'okoliš', 'okolis', 'poljopriv'], keys: [], obrti: ['poljoprivreda_vrtlarstvo_i_sumarstvo'] },
+  { patterns: ['torte', 'torta', 'kolač', 'kolac', 'slastic', 'mesnic', 'mesar', 'pekarn', 'kruh', ' med ', 'meda '], keys: [], obrti: ['proizvodnja_i_prodaja_hrane_pekare_mesnice_slastice'] },
   { patterns: ['ribolov', 'pecanj', 'pecati'], keys: ['priroda.ribolov'] },
 ];
 
@@ -335,6 +354,7 @@ function serviceTopicUrls(query: string): string[] {
     if (!t.patterns.some((p) => q.includes(p))) continue;
     for (const k of t.keys) out.add(`${base}#${k}`);
     for (const u of t.urls ?? []) out.add(u);
+    for (const o of t.obrti ?? []) out.add(`${config.obrtiImportBaseUrl}#${o}`);
   }
   return [...out];
 }

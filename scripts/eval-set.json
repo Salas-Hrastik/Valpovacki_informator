@@ -114,5 +114,13 @@
   {
     "question": "Trebam čišćenje stana u Valpovu, koga mogu nazvati?",
     "expected_urls": ["pretrazivac-obrta.gov.hr/#ciscenje"]
+  },
+  {
+    "question": "trebam uslugu spremanja kuće",
+    "expected_urls": ["pretrazivac-obrta.gov.hr/#ciscenje"]
+  },
+  {
+    "question": "curi mi bojler, tko to može popraviti?",
+    "expected_urls": ["pretrazivac-obrta.gov.hr/#elektro_vodo"]
   }
 ]
