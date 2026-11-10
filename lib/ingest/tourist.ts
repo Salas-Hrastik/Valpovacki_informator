@@ -15,11 +15,8 @@
  * kategorije); nestale kategorije se brišu, uz sigurnosnu branu protiv praznog
  * ili oštećenog odgovora.
  */
-import { createHash } from 'crypto';
-import { chunkText } from '../chunking';
 import { config } from '../config';
-import { embedTexts, l2norm } from '../embeddings';
-import { supabaseAdmin } from '../supabase';
+import { syncImportedDocs, type ImportDoc, type ImportSyncStats } from './importSync';
 import { CRAWLER_USER_AGENT } from './robots';
 
 export type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
@@ -115,11 +112,7 @@ function renderItem(category: string, item: { [k: string]: Json }): string {
   return body ? `${head}\n${body}` : head;
 }
 
-export interface ImportDoc {
-  key: string;
-  title: string;
-  text: string;
-}
+export type { ImportDoc };
 
 /** Kategorija → dokument. Nizovi objekata postaju odlomci po stavci. */
 function buildDoc(key: string, value: Json): ImportDoc | null {
@@ -192,91 +185,17 @@ export async function fetchTouristDb(url: string = config.touristSourceUrl): Pro
   return data as { [k: string]: Json };
 }
 
-export interface TouristSyncStats {
-  categories: number;
-  inserted: number;
-  updated: number;
-  unchanged: number;
-  deleted: number;
-}
-
-/** Najmanji broj kategorija ispod kojeg NE brišemo ništa (zaštita od praznog/krivog odgovora). */
-const MIN_CATEGORIES_FOR_DELETE = 10;
+export type TouristSyncStats = ImportSyncStats;
 
 /** Upisuje/ažurira kategorije turističkog vodiča u indeks; briše nestale. */
 export async function syncTouristDocs(
   db: { [k: string]: Json },
   log: (msg: string) => void = console.log,
 ): Promise<TouristSyncStats> {
-  const docs = touristDocsToImport(db);
-  const base = config.touristImportBaseUrl;
-  const sb = supabaseAdmin();
-  const source = new URL(base).hostname;
-
-  const { data: existing, error: exErr } = await sb
-    .from('dokumenti')
-    .select('id, url, content_hash')
-    .like('url', `${base}#%`);
-  if (exErr) throw new Error(exErr.message);
-  const prev = new Map(
-    (existing ?? []).map((d: { id: string; url: string; content_hash: string }) => [d.url, d]),
-  );
-
-  const stats: TouristSyncStats = { categories: docs.length, inserted: 0, updated: 0, unchanged: 0, deleted: 0 };
-  const keep = new Set<string>();
-  for (const d of docs) {
-    const url = `${base}#${d.key}`;
-    keep.add(url);
-    const hash = createHash('sha256').update(d.text).digest('hex');
-    const old = prev.get(url);
-    if (old?.content_hash === hash) {
-      await sb.rpc('touch_document', { p_url: url });
-      stats.unchanged++;
-      continue;
-    }
-    const chunks = chunkText(d.text);
-    const vectors = await embedTexts(chunks.map((c) => `${d.title}\n\n${c.text}`));
-    const { error } = await sb.rpc('upsert_document_with_chunks', {
-      p_doc: {
-        url,
-        title: d.title,
-        source,
-        lang: config.lang,
-        municipality: 'Valpovo',
-        content_text: d.text,
-        content_hash: hash,
-        published_at: '',
-      },
-      p_chunks: chunks.map((c, i) => ({
-        chunk_index: c.chunk_index,
-        text: c.text,
-        tokens_est: c.tokens_est,
-        embedding: vectors[i],
-        norm: l2norm(vectors[i]),
-      })),
-    });
-    if (error) throw new Error(`${url}: ${error.message}`);
-    if (old) stats.updated++;
-    else stats.inserted++;
-    log(`[turizam] ${old ? 'ažurirano' : 'novo'}: ${d.title} — ${chunks.length} isječaka`);
-  }
-
-  // Kategorije koje su nestale iz baze → brisanje (cascade uklanja isječke).
-  // Sigurnosna brana: ako je odgovor sumnjivo malen, ne brišemo ništa.
-  const stale = [...prev.values()].filter((d) => !keep.has(d.url)).map((d) => d.id);
-  if (stale.length > 0) {
-    if (docs.length < MIN_CATEGORIES_FOR_DELETE) {
-      log(`[turizam] UPOZORENJE: samo ${docs.length} kategorija — preskačem brisanje ${stale.length} starih.`);
-    } else {
-      const { error } = await sb.from('dokumenti').delete().in('id', stale);
-      if (error) throw new Error(`Brisanje: ${error.message}`);
-      stats.deleted = stale.length;
-    }
-  }
-
-  log(
-    `[turizam] Gotovo — novo: ${stats.inserted}, ažurirano: ${stats.updated}, ` +
-      `nepromijenjeno: ${stats.unchanged}, obrisano: ${stats.deleted}`,
-  );
-  return stats;
+  return syncImportedDocs(touristDocsToImport(db), {
+    base: config.touristImportBaseUrl,
+    tag: 'turizam',
+    minForDelete: 10,
+    log,
+  });
 }
