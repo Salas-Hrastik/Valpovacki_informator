@@ -78,15 +78,15 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    // 1) Retrieval (embedding upita + pgvector + opcionalni FTS rezerva)
-    const chunks = await retrieve(question);
+    // 1) Retrieval + trenutna temperatura (paralelno, weather je best-effort)
+    const [chunks, weatherLine] = await Promise.all([retrieve(question), fetchCurrentWeather()]);
     const sources = uniqueSources(chunks);
 
     // 2) Poruke za Claude: povijest razgovora + zadnje pitanje s kontekstom
     const history = messages.slice(0, -1).slice(-MAX_HISTORY_TURNS);
     const claudeMessages: Anthropic.MessageParam[] = [
       ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user' as const, content: buildUserPrompt(question, chunks) },
+      { role: 'user' as const, content: buildUserPrompt(question, chunks, weatherLine) },
     ];
 
     // 3) Streaming odgovor (Messages API)
@@ -232,6 +232,38 @@ async function logConversation(entry: {
     model: config.claudeModel,
     user_hash: entry.userHash,
   });
+}
+
+async function fetchCurrentWeather(): Promise<string | undefined> {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=45.66&longitude=18.42&current=temperature_2m,weathercode,wind_speed_10m';
+    const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return undefined;
+    const d = await res.json() as { current?: { temperature_2m?: number; weathercode?: number; wind_speed_10m?: number } };
+    const c = d?.current;
+    if (!c || typeof c.temperature_2m !== 'number') return undefined;
+    const temp = Math.round(c.temperature_2m);
+    const wind = typeof c.wind_speed_10m === 'number' ? Math.round(c.wind_speed_10m) : null;
+    const opis = decodeWeatherCode(c.weathercode ?? -1);
+    const dijelovi: string[] = [`${temp} °C`, opis];
+    if (wind !== null) dijelovi.push(`vjetar ${wind} km/h`);
+    return `Trenutna temperatura u Valpovu: ${dijelovi.join(', ')}`;
+  } catch {
+    return undefined;
+  }
+}
+
+function decodeWeatherCode(code: number): string {
+  if (code === 0) return 'vedro';
+  if (code <= 2) return 'djelomično oblačno';
+  if (code === 3) return 'oblačno';
+  if (code <= 48) return 'magla';
+  if (code <= 57) return 'rosulja';
+  if (code <= 67) return 'kiša';
+  if (code <= 77) return 'snijeg';
+  if (code <= 82) return 'pljuskovi';
+  if (code <= 86) return 'snježni pljuskovi';
+  return 'grmljavinska oluja';
 }
 
 function json(data: object, status: number): Response {
