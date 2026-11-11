@@ -412,6 +412,8 @@ export default function Chat() {
     } catch {
       recognitionRef.current = null;
       setListening(false);
+      voiceModeRef.current = false;
+      setVoiceMode(false);
     }
   }, []);
 
