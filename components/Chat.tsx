@@ -574,6 +574,8 @@ export default function Chat() {
     voiceModeRef.current = true;
     setVoiceMode(true);
     startCapture();
+    // Scroll input into view so interim transcript text is immediately visible
+    setTimeout(() => taRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   };
   // "Gotovo": zaustavi slušanje i POŠALJI prepoznato/snimljeno (voiceModeRef ostaje
   // uključen da onend/onstop obave slanje). Ako ništa nije rečeno, tiho završi.
@@ -696,6 +698,7 @@ export default function Chat() {
           ref={taRef}
           rows={1}
           value={input}
+          className={listening ? 'dictating' : undefined}
           onChange={(e) => {
             setInput(e.target.value);
             autoGrow(e.currentTarget);

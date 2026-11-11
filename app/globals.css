@@ -379,7 +379,12 @@ body {
   align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--boja-rub);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--boja-bijela);
 }
 
 .chat-input textarea {
@@ -399,6 +404,15 @@ body {
   outline: none;
   border-color: var(--boja-primarna);
   box-shadow: 0 0 0 2px rgba(1, 65, 40, 0.18);
+}
+.chat-input textarea.dictating {
+  border-color: var(--boja-primarna);
+  box-shadow: 0 0 0 2px rgba(1, 65, 40, 0.25);
+  animation: dictate-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dictate-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(1, 65, 40, 0.25); }
+  50%       { box-shadow: 0 0 0 5px rgba(1, 65, 40, 0.08); }
 }
 
 .chat-input button {
