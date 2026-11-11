@@ -320,7 +320,9 @@ export default function Chat() {
       clearWsTimers();
       shouldSendRef.current = true; // signalizira onend-u da pošalje
       try {
-        rec.stop(); // → onend (šalje prepoznati tekst)
+        // Zaustavlja TRENUTNO aktivno prepoznavanje — može biti kasniji iOS
+        // restart ciklus, pa ne koristimo zatvoreni rec nego recognitionRef.
+        recognitionRef.current?.stop();
       } catch {
         /* ignoriraj */
       }
@@ -351,9 +353,15 @@ export default function Chat() {
       // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
       // ako finish() još nije postavio zastavicu, nastavljamo slušati.
       if (isIOS && wasActive && !shouldSendRef.current) {
+        // Brišemo speechEndTimer: ako ostane aktivan, okida finish() dok korisnik
+        // još govori u novom ciklusu → šalje samo prvu riječ/frazu.
+        if (speechEndTimerRef.current) {
+          clearTimeout(speechEndTimerRef.current);
+          speechEndTimerRef.current = null;
+        }
         iosBaseRef.current = transcriptRef.current; // sačuvaj dosad prepoznato
         setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 80);
-        return; // NE čistimo timere — speechEndTimer nastavlja odbrojavanje
+        return;
       }
       clearWsTimers();
       setListening(false);
@@ -408,7 +416,10 @@ export default function Chat() {
     setListening(true);
     try {
       rec.start();
-      idleTimerRef.current = setTimeout(finish, 8000);
+      // iOS restart s akumuliranim tekstom: kraći idle (2,5 s) jer korisnik
+      // vjerojatno nije nastavio govoriti — ako jeste, onresult će odgoditi slanje.
+      const idleMs = (isIOS && isRestart && iosBaseRef.current) ? 2500 : 8000;
+      idleTimerRef.current = setTimeout(finish, idleMs);
     } catch {
       recognitionRef.current = null;
       setListening(false);
