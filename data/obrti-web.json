@@ -54,9 +54,9 @@
   },
   "90492579": {
     "naziv": "BLUE, ugostiteljski obrt",
-    "web": "https://tz.valpovo.hr/ugostiteljstvo/caffe-night-bar-blue/",
+    "web": "https://www.instagram.com/caffe_night_bar_blue",
     "telefon": null,
-    "izvor": "turizam"
+    "izvor": "ručno"
   },
   "90493273": {
     "naziv": "DRAFT obrt za trgovinu i ostale usluge",
@@ -176,8 +176,9 @@
   "92107435": {
     "naziv": "EURO-PROFIL obrt za proizvodnju, trgovinu i usluge",
     "web": "https://www.euro-profil.hr",
-    "telefon": null,
-    "izvor": "domena"
+    "telefon": "+385 31 651 996",
+    "izvor": "domena",
+    "telefonIzvor": "ručno"
   },
   "92107567": {
     "naziv": "\"VEDRAN\" - OBRT ZA ODRŽAVANJE I POPRAVAK MOTORNIH VOZILA",
@@ -499,9 +500,9 @@
   },
   "98099892": {
     "naziv": "AQUA CAFFE, obrt za ugostiteljstvo i ostale usluge",
-    "web": "https://tz.valpovo.hr/ugostiteljstvo/caffe-bar-aqua-valpovo/",
+    "web": "https://www.facebook.com/aqua.caffe.56",
     "telefon": null,
-    "izvor": "turizam"
+    "izvor": "ručno"
   },
   "98114972": {
     "naziv": "BEAUTY ATELIER KRISS, obrt za kozmetičke usluge",
