@@ -1,1174 +1,1485 @@
 {
   "90489128": {
     "naziv": "BLM, obrt za proizvodnju, trgovinu i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90489136": {
     "naziv": "\"AUTOLIMAR - AUTOLAKIRER\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90489454": {
     "naziv": "AUTOSERVIS RUŽIĆ, obrt za autolakirerske radove i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90490584": {
     "naziv": "AUTOCENTAR IVICA autoservisni obrt",
-    "web": null
+    "web": null,
+    "telefon": "+385 31 651 037",
+    "telefonIzvor": "turizam"
   },
   "90491084": {
     "naziv": "ZLATAR - URAR - OPTIČAR \"BABIĆ\", OBRT ZA PROIZVODNJU, USLUGE I TRGOVINU",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90491114": {
     "naziv": "\"JOVINAC\" - SERVIS ZA TRAKTORE I POLJOPRIVREDNE STROJEVE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90491289": {
     "naziv": "\"LAMBA\" - TRGOVINA NA MALO",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90491327": {
     "naziv": "HOTEL VILLA VALPOVO, ugostiteljski obrt",
     "web": "https://tz.valpovo.hr/smjestaj-u-valpovu/villa-valpovo/",
-    "izvor": "turizam"
+    "telefon": "+385 31 651 960",
+    "izvor": "turizam",
+    "telefonIzvor": "turizam"
   },
   "90491424": {
     "naziv": "POSTOLARSKA RADNJA \"MOCCASIN\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90492269": {
     "naziv": "KNJIŽARA I PAPIRNICA SVIJET, trgovački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90492579": {
     "naziv": "BLUE, ugostiteljski obrt",
-    "web": null
+    "web": "https://www.instagram.com/caffe_night_bar_blue",
+    "telefon": null,
+    "izvor": "ručno"
   },
   "90493273": {
     "naziv": "DRAFT obrt za trgovinu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90493303": {
     "naziv": "MARKET \"ŽUŽIĆ\" obrt za trgovinu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90494296": {
     "naziv": "GRAFIČKA RADNJA PRINTY",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90494393": {
     "naziv": "FRIZERSKI SALON VIVA, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": "+385 31 651 244",
+    "telefonIzvor": "turizam"
   },
   "90494407": {
     "naziv": "LAURA obrt za trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90494580": {
     "naziv": "MOTO, obrt za servis i trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90494725": {
     "naziv": "RESTORAN PARK, obrt za ugostiteljstvo",
     "web": "https://restoran-park.hr",
-    "izvor": "turizam"
+    "telefon": "+385 31 651 230",
+    "izvor": "turizam",
+    "telefonIzvor": "turizam"
   },
   "90495292": {
     "naziv": "ORBY TRADE - OBRT ZA TRGOVINU NA VELIKO",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "90495314": {
     "naziv": "ZM-PLAST trgovački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "91821452": {
     "naziv": "TURALIJA, obrt za prijevoz, trgovinu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "91821673": {
     "naziv": "CAFFE-BAR \"TONI\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "91883679": {
     "naziv": "OBRT ZA POLJOPRIVREDU \"PUŠKADIJA\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "91884543": {
     "naziv": "WALPO obrt za proizvodnju i trgovinu",
     "web": "https://walpo.hr",
-    "izvor": "domena"
+    "telefon": "+385 31 651 111",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "91884551": {
     "naziv": "BUNARCO, obrt za bušenje bunara i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "91885825": {
     "naziv": "STOLARSKI OBRT \"JURIĆ\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92003150": {
     "naziv": "BUČANAC ugostiteljski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92003427": {
     "naziv": "KARLO SERVIS, obrt za ugradnju i servis",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92102298": {
     "naziv": "POKRETNA TRGOVAČKA RADNJA \"JANJA\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92102590": {
     "naziv": "\"NEVEN & SVEN\" - AGENCIJA ZA INFORMATIČKU DJELATNOST, POSLOVNO SAVJETOVANJE, POSREDOVANJE I MARKETING",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92102654": {
     "naziv": "SERVIS BLAŽEVIĆ obrt za usluge i popravak rashladnih uređaja",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92102808": {
     "naziv": "AUTOSERVIS VALENTIĆ, obrt za održavanje i popravak motornih vozila",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92107311": {
     "naziv": "WELLNESS CENTAR LELA, obrt za kozmetičke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92107435": {
     "naziv": "EURO-PROFIL obrt za proizvodnju, trgovinu i usluge",
     "web": "https://www.euro-profil.hr",
-    "izvor": "domena"
+    "telefon": "+385 31 651 996",
+    "izvor": "domena",
+    "telefonIzvor": "ručno"
   },
   "92107567": {
     "naziv": "\"VEDRAN\" - OBRT ZA ODRŽAVANJE I POPRAVAK MOTORNIH VOZILA",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92310648": {
     "naziv": "DIGITAL FOTO MOGOROŠ, obrt za fotografske djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92494323": {
     "naziv": "FENIX, obrt za prijevoz i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92494382": {
     "naziv": "\"MEDO\" - OBRT ZA AUTOMATIKU I UPRAVLJANJE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92494412": {
     "naziv": "MAESTRO, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92494757": {
     "naziv": "JURINA obrt za roletarstvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92500846": {
     "naziv": "TIMAT - OBRT ZA KNJIGOVODSTVENE USLUGE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92500986": {
     "naziv": "CVJEĆARNICA DALIA",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92501214": {
     "naziv": "STAKLOPROMET, OBRT ZA PROIZVODNJU I USLUGE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92501290": {
     "naziv": "SALON COOL, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": "+385 99 350 2909",
+    "telefonIzvor": "turizam"
   },
   "92501451": {
     "naziv": "REZAČ obrt za skupljanje i prodaju sekundarnih sirovina",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92708978": {
     "naziv": "MONTIS plinoinstalaterski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92713033": {
     "naziv": "VIŠNJA, obrt za knjigovodstvene usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "92713327": {
     "naziv": "DRPIĆ, obrt za trgovinu i popravak motornih vozila",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97131814": {
     "naziv": "AUTOSERVIS \"GALIČIĆ\"",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97137537": {
     "naziv": "LORNA, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97143049": {
     "naziv": "SALON BEAUTY, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97191060": {
     "naziv": "ALYA IPR - OBRT ZA PROGRAMIRANJE",
     "web": "https://alya-ipr.com",
-    "izvor": "domena"
+    "telefon": "+385 98 280 930",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "97197840": {
     "naziv": "INFOHR, AGENCIJA ZA RAČUNALNE USLUGE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97249211": {
     "naziv": "ČERNIK, poljoprivredni obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97274445": {
     "naziv": "DIGITALNO DOBA, OBRT ZA INFORMATIKU I MANAGEMENT",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97279919": {
     "naziv": "AGENCIJA MIJATOV, obrt za računovodstveno knjigovodstvene poslove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97305111": {
     "naziv": "DIMNJAČARSKI OBRT \"VALPOVO\"",
     "web": null,
-    "izvor": "ručno"
+    "izvor": "ručno",
+    "telefon": null
   },
   "97324752": {
     "naziv": "ENERGOSOLAR - PROIZVODNJA ENERGIJE IZ OBNOVLJIVIH IZVORA",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97356921": {
     "naziv": "QUANTUM, obrt za upravljanjem računalnom opremom i sustavima",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97382264": {
     "naziv": "VIZLER ELEKTRONIKA, obrt za izradu, popravke i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97393584": {
     "naziv": "OKUS, obrt za knjigovodstvene usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97396672": {
     "naziv": "AURA - CENTAR ZA ZDRAVLJE, obrt za fizikalnu i radnu terapiju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97402559": {
     "naziv": "LEVITA trgovački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97420506": {
     "naziv": "KORAK obrt za trgovinu na malo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97428850": {
     "naziv": "SALON MIRA frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": "+385 31 651 120",
+    "telefonIzvor": "turizam"
   },
   "97431109": {
     "naziv": "IGOR, soboslikarski i ličilački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97468401": {
     "naziv": "LIMKO obrt za procjenu, montažu i informatičke djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97510076": {
     "naziv": "IVEZIĆ soboslikarsko ličilački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97528951": {
     "naziv": "DS PLUS obrt za promidžbu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97561541": {
     "naziv": "VESPERA ugostiteljski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97595071": {
     "naziv": "DONNA, krojački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97623202": {
     "naziv": "VALPOVAČKI DVORI ugostiteljski obrt",
     "web": "https://tz.valpovo.hr/smjestaj-u-valpovu/valpovacki-dvori/",
-    "izvor": "turizam"
+    "telefon": "+385 98 722 234",
+    "izvor": "turizam",
+    "telefonIzvor": "turizam"
   },
   "97626015": {
     "naziv": "BONDY, obrt za šišanje i njegu kućnih ljubimaca",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97626082": {
     "naziv": "VITEZ, ugostiteljski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97666530": {
     "naziv": "LBD, obrt za graditeljstvo i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97706655": {
     "naziv": "BELLEZA, obrt za zabavne djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97715964": {
     "naziv": "JO-ANN, kozmetički obrt",
-    "web": null
+    "web": null,
+    "telefon": "+385 31 652 070",
+    "telefonIzvor": "turizam"
   },
   "97736457": {
     "naziv": "SALON QUEEN, obrt za manikuru",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97769975": {
     "naziv": "RPX-CUT, obrt za strojnu obradu metala",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97789992": {
     "naziv": "DABO, obrt za popravak i održavanje vozila",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97872792": {
     "naziv": "SINAMIC, obrt za elektroinstalacijske radove i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97886360": {
     "naziv": "KERAMIKA DIENEŠ, keramičarski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97886971": {
     "naziv": "DINOX, strojobravarski obrt za proizvodnju metalne galanterije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97890847": {
     "naziv": "CALESTIC, OBRT ZA USLUGE",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97891762": {
     "naziv": "ČIPKA 1 obrt za usluge i trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97916536": {
     "naziv": "HM projekti, obrt za poslovno savjetovanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97935336": {
     "naziv": "STUDIO LUX, obrt za manikuru",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97940712": {
     "naziv": "TONE KEEPER, obrt za proizvodnju glazbene opreme i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97950378": {
     "naziv": "HKM BUSINESS SERVICES, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97957631": {
     "naziv": "ANOČIĆ PRIJEVOZ, obrt za prijevoz",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97987557": {
     "naziv": "LU-LUNI, obrt za ostale zabavne i rekreacijske djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "97992186": {
     "naziv": "JERRY 5, obrt za prevoditeljstvo i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98025716": {
     "naziv": "SLASTIČARNICA LAGUNA, ugostiteljski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98043048": {
     "naziv": "M, obrt za trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98067982": {
     "naziv": "LILLY GROOMING, obrt za njegu i šišanje pasa",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98081209": {
     "naziv": "TIM GRADNJA, obrt za završne radove u građevinarstvu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98099892": {
     "naziv": "AQUA CAFFE, obrt za ugostiteljstvo i ostale usluge",
-    "web": null
+    "web": "https://www.facebook.com/aqua.caffe.56",
+    "telefon": null,
+    "izvor": "ručno"
   },
   "98114972": {
     "naziv": "BEAUTY ATELIER KRISS, obrt za kozmetičke usluge",
-    "web": null
+    "web": null,
+    "telefon": "+385 91 515 2401",
+    "telefonIzvor": "turizam"
   },
   "98133934": {
     "naziv": "G&E, obrt za zemljane radove, prijevoz i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98140370": {
     "naziv": "POTENCIJAL, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98140647": {
     "naziv": "SIGMA, obrt za zastupanje u osiguranju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98187511": {
     "naziv": "BARBERSHOP INDUSTRY, obrt za frizerske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98213890": {
     "naziv": "STUDIO AR, obrt za izradu video igara i grafički dizajn",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98231880": {
     "naziv": "SAKAČ krovni prozori, obrt za ugradnju stolarije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98232355": {
     "naziv": "DEBAGI, obrt za informatičku djelatnost",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98233238": {
     "naziv": "L&I, obrt za trgovinu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98239830": {
     "naziv": "Lil star newborn photography, obrt za umjetničko stvaralaštvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98243560": {
     "naziv": "Kaliopa Crafts, obrt za dizajn, umjetnost i kreativne usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98243926": {
     "naziv": "FrizzStyle, obrt za frizerske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98257889": {
     "naziv": "TortaToGo, obrt za proizvodnju torti i kolača",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98270044": {
     "naziv": "AP ZRNO, obrt za prijevoz tereta",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98270575": {
     "naziv": "IMPACT PHYSIOTHERAPY, obrt za mobilizacijske tehnike",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98274155": {
     "naziv": "ILUMA, obrt za marketinške usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98275542": {
     "naziv": "J&A, obrt za kozmetičke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98285424": {
     "naziv": "GEMMA-ɣ, obrt za njegu tijela",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98292323": {
     "naziv": "S-interijeri, obrt za proizvodnju namještaja",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98293575": {
     "naziv": "TOR COLOR, obrt za soboslikarske i ličilačke radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98296388": {
     "naziv": "STUDIO INK, obrt za tisak, trgovinu i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98304615": {
     "naziv": "MYSTIQUE, obrt za ugradnju noktiju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98313789": {
     "naziv": "O.M.R., obrt za proizvodnju strojeva i strojnu obradu metala",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98334174": {
     "naziv": "HD-MODRIĆ, obrt za soboslikarsko-ličilačke radove i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98344773": {
     "naziv": "MASH MEDIA, obrt za tonsko snimanje i audio produkciju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98360884": {
     "naziv": "DAVORKA, obrt za knjigovodstvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98394967": {
     "naziv": "MI-NI, obrt za završne građevinske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98400118": {
     "naziv": "BODY CONTROL, obrt za ostalo obrazovanje i poučavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98412558": {
     "naziv": "BEAUTY STUDIO BY TENA, obrt za ugradnju noktiju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98427202": {
     "naziv": "FRIGO-EXPERT, obrt za popravak i održavanje opreme za kuću i vrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98430513": {
     "naziv": "VESPERAS, ugostiteljski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98430530": {
     "naziv": "ROTO SERVIS, obrt za popravak bicikala",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98443984": {
     "naziv": "e-Dea, obrt za digitalni marketing",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98452738": {
     "naziv": "VKM, obrt za elektroinstalacijske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98464779": {
     "naziv": "BOMBON MIX, obrt za trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98464841": {
     "naziv": "WALPACH INSTAL, obrt za pripremne radove na gradilištu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98467930": {
     "naziv": "STELLAR PRIME, obrt za računalne i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98475681": {
     "naziv": "MAGLA MUSIC, obrt za obrazovanje i poučavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98478915": {
     "naziv": "STUDIO MONROE, obrt za uljepšavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98490117": {
     "naziv": "FIT WAY, obrt za trgovinu i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98493370": {
     "naziv": "MANE, stolarski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98510665": {
     "naziv": "V.E.L., obrt za ostale zabavne i rekreacijske djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98515659": {
     "naziv": "OPAL, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98543903": {
     "naziv": "No limit, obrt za sport i rekreaciju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98553127": {
     "naziv": "M-clean, obrt za čišćenje",
     "web": "https://m-clean.hr",
-    "izvor": "domena"
+    "telefon": "+385 97 606 6085",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "98553259": {
     "naziv": "SATKANO, obrt za cvjećarsko-aranžerske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98558668": {
     "naziv": "creART, obrt za kreativne djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98571753": {
     "naziv": "COOL, obrt za taksi prijevoz",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98573128": {
     "naziv": "TLM Solar, obrt za proizvodnju električne energije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98583441": {
     "naziv": "MCODE, obrt za računalno programiranje",
     "web": "https://mcode.hr",
+    "telefon": null,
     "izvor": "domena"
   },
   "98597744": {
     "naziv": "Pola Cipra, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98601725": {
     "naziv": "TISLTEX, obrt za tisak na tekstil i trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98606514": {
     "naziv": "MINION, obrt za digitalne usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98611712": {
     "naziv": "STROJOBRAVARSKI OBRT BRANIMIR, strojobravarski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98613162": {
     "naziv": "MAGIĆ, obrt za usluge, trgovinu i servis",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98616013": {
     "naziv": "VILIJAM S., obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98629123": {
     "naziv": "Procjena Blažević, obrt za procjenu šteta i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98644823": {
     "naziv": "PROJEKT PULS, obrt za organizaciju izvedbe projekata za zgrade",
     "web": "https://projektpuls.hr",
-    "izvor": "domena"
+    "telefon": "+385 97 669 8376",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "98650157": {
     "naziv": "OLIMP MASSAGE THERAPY, obrt za masažu tijela",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98658123": {
     "naziv": "ZOROASTER, obrt za vodoinstalacije, instalacije grijanja i klimatizacije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98669613": {
     "naziv": "ĆAVAR INTERIJERI, obrt za završne građevinske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98695681": {
     "naziv": "IDEA BY MARINA, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98698672": {
     "naziv": "ARMOR, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98699148": {
     "naziv": "Lukas stil, obrt za trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98716077": {
     "naziv": "RECOVERY - TECH, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98728474": {
     "naziv": "FIrMA, obrt za elektroinstalacijske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98747592": {
     "naziv": "ARMOTO, obrt za popravak i održavanje opreme za kuću i vrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98762281": {
     "naziv": "AUTO NATAŠA, obrt za pranje i poliranje vozila",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98774603": {
     "naziv": "MiDIL, obrt za produkciju, organizaciju i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98777670": {
     "naziv": "ALDOMAŠ KUĆA, obrt za iznajmljivanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98778137": {
     "naziv": "MASTER F&M, obrt za bravarske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98802798": {
     "naziv": "KLIKA, obrt za iznajmljivanje i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98809547": {
     "naziv": "INFORMOUS, obrt za oglašavanje putem medija",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98824627": {
     "naziv": "SPOTLESS CLEAN, obrt za održavanje automobila i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98838377": {
     "naziv": "Kozmetički studio Lumos, obrt za kozmetičke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98843559": {
     "naziv": "Kineflex, obrt za iznajmljivanje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98844415": {
     "naziv": "BEAUTY ROOM T, obrt za kozmetičke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98865536": {
     "naziv": "Noware Beats, obrt za audio i video produkciju te maloprodaju putem interneta",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98867326": {
     "naziv": "IC METAL, obrt za bravarske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98874039": {
     "naziv": "MAKI-SPORT, obrt za obrazovanje i podučavanje u području sporta i rekreacije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98876104": {
     "naziv": "CHERRY, obrt za obrazovanje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98877801": {
     "naziv": "SM Social, obrt za digitalnu promidžbu i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98881027": {
     "naziv": "HORIZON TRANSPORT, obrt za prijevoz i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98896814": {
     "naziv": "STUDIO 11, obrt za uljepšavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98904302": {
     "naziv": "CONSULTING TEAM, obrt za zapošljavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98907271": {
     "naziv": "KATHARI, obrt za računalno programiranje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98912291": {
     "naziv": "HP BEAUTY ZONE, obrt za uljepšavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98912577": {
     "naziv": "WEBINUM, obrt za računalno programiranje i savjetovanje",
     "web": "https://webinum.hr",
-    "izvor": "domena"
+    "telefon": "+385 98 977 6314",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "98913891": {
     "naziv": "Muzzy, obrt za usluge dostave",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98919571": {
     "naziv": "VELCON, obrt za tehničko savjetovanje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98930869": {
     "naziv": "Sportski Kod, obrt za usluge u području sporta",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98947648": {
     "naziv": "SERVIS VEBER, obrt za čišćenje i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98959689": {
     "naziv": "MITIAN, obrt za trgovinu i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98962876": {
     "naziv": "SABY, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98968220": {
     "naziv": "e-Ena, obrt za korisničku podršku i ostale usluge",
     "web": "https://e-ena.hr",
-    "izvor": "domena"
+    "telefon": "+385 31 888 090",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "98969587": {
     "naziv": "LsTudio, obrt za ručno rađenu keramiku",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98973738": {
     "naziv": "PRfect, obrt za evente i odnose s javnošću",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98980157": {
     "naziv": "N i P FRANJIĆ, obrt za završne građevinske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98980394": {
     "naziv": "KIŠKA, obrt za proizvodnju unikatnih predmeta od keramike",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98980599": {
     "naziv": "PLAN BEE, obrt za poslovno savjetovanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "98987968": {
     "naziv": "NAIL STUDIO PRETTY GLAM, obrt za ugradnju noktiju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99021099": {
     "naziv": "MAT-AL, obrt za proizvodnju PVC stolarije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99028514": {
     "naziv": "ARBO VAL, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99034476": {
     "naziv": "Hair salon Mare, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99037939": {
     "naziv": "ASPECT RATIO, obrt za produkciju i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99044196": {
     "naziv": "Luu-Luu, obrt za čišćenje",
     "web": "https://luu-luu.hr",
-    "izvor": "domena"
+    "telefon": "+385 99 203 1217",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "99044218": {
     "naziv": "GMK, klesarski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99049953": {
     "naziv": "OHM-ELEKTROTEHNIKA, obrt za izvođenje elektroinstalacijskih radova",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99060175": {
     "naziv": "IVAN, obrt za keramičarske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99077060": {
     "naziv": "S-GALAC, obrt za popravke i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99081318": {
     "naziv": "Z-EN, obrt za vodoinstalaterske radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99081601": {
     "naziv": "BC-HOME, obrt za uslužne djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99084279": {
     "naziv": "Učionica snova, obrt za edukaciju i savjetovanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99089696": {
     "naziv": "Gigo, obrt za proizvodnju i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99090066": {
     "naziv": "MS Coaching, obrt za poučavanje u području sporta",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99092263": {
     "naziv": "SchaltWerk, obrt za proizvodnju elektroinstalacijskog materijala",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99103079": {
     "naziv": "Studio NiT, obrt za uljepšavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99103419": {
     "naziv": "MAGIĆ PLUS, obrt za grijanje i klimatizaciju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99103907": {
     "naziv": "SVART, obrt za tetoviranje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99104458": {
     "naziv": "VIDRA, obrt za 3D printanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99104962": {
     "naziv": "MILKA 2, trgovački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99105977": {
     "naziv": "Fizio Algos, obrt za fizioterapiju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99106973": {
     "naziv": "MIMI, obrt za proizvodnju i usluge",
     "web": "https://mimi.hr",
-    "izvor": "domena"
+    "telefon": "+385 95 532 5099",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "99115999": {
     "naziv": "RANSEC, obrt za usluge programiranja",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99128292": {
     "naziv": "MAESTRO TECHNIK, obrt za vodovodne instalacije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99132397": {
     "naziv": "MOXY, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99132893": {
     "naziv": "EL-PAN 2, pekarski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99137585": {
     "naziv": "VUČKO ASSISTANT, obrt za pomoć na cesti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99140187": {
     "naziv": "CODE-Digital Agency, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99141779": {
     "naziv": "TSG, obrt za vodoinstalaterske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99142465": {
     "naziv": "SM COACHING, obrt za poučavanje u području sporta",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99150182": {
     "naziv": "Frizerski studio Glow, obrt za frizerske usluge",
-    "web": null
+    "web": null,
+    "telefon": "+385 99 281 8667",
+    "telefonIzvor": "turizam"
   },
   "99160285": {
     "naziv": "STUDIO by MI, frizerski obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99160374": {
     "naziv": "ASTAL, obrt za ugostiteljstvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99165236": {
     "naziv": "LOKNICA, obrt za kreativne djelatnosti i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99165562": {
     "naziv": "MASTERPIECE TATTOO STUDIO, obrt za tetoviranje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99165686": {
     "naziv": "LJUBAS - KOP, obrt za pripremne radove na gradilištu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99166038": {
     "naziv": "Fumić, obrt za sportske i informatičke djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99176106": {
     "naziv": "CITY ĆAVAR, obrt za iznajmljivanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99177293": {
     "naziv": "VALL, obrt za montažu suhe gradnje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99182181": {
     "naziv": "ProVolley M, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99185091": {
     "naziv": "IMatix, obrt za pružanje usluga",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99192179": {
     "naziv": "TAYS, obrt za frizerske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99200333": {
     "naziv": "ANĐEO ČUVAR, obrt za održavanje grobova",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99207842": {
     "naziv": "ANTINA, obrt za grafički dizajn i marketing",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99212609": {
     "naziv": "SOVICA MUDRICA, obrt za poduku",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99218348": {
     "naziv": "LENAMI, obrt za izradu rukotvorina",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99218941": {
     "naziv": "Lovosh, obrt za multimedijalne usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99224909": {
     "naziv": "CHAMELEON ING, obrt za proizvodnju i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99225751": {
     "naziv": "Mentor Consulting, obrt za obrazovanje i poučavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99234831": {
     "naziv": "FAST FOOD LANA, obrt za ugostiteljstvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99235595": {
     "naziv": "TIENDA D, trgovački obrt",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99245361": {
     "naziv": "MAGIC VOICE, obrt za glazbeno stvaralaštvo",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99246864": {
     "naziv": "MRAVAK, obrt za psihoterapiju, savjetovanje i neurofeedback",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99250756": {
     "naziv": "DS DECOR STUDIO, obrt za dekoriranje i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99256002": {
     "naziv": "TBM, obrt za poslovno savjetovanje, usluge i trgovinu",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99260271": {
     "naziv": "DJEČJA KUĆA, obrt za dnevnu skrb o djeci",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99263165": {
     "naziv": "LIFTER-KOP, obrt za građevinske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99266385": {
     "naziv": "GRIDON, obrt za elektroinženjerske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99267403": {
     "naziv": "GROOVELAB, obrt za usluge u izvođačkoj umjetnosti i edukaciju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99271796": {
     "naziv": "EcoFresh, obrt za čišćenje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99274191": {
     "naziv": "MID, obrt za iznajmljivanje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99283166": {
     "naziv": "SKELO, obrt za elektroinstalacije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99283905": {
     "naziv": "ANDREJA MUSIC, obrt za izvedbene umjetnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99286327": {
     "naziv": "NOMAD EXPRESS, obrt za taxi prijevoz",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99286726": {
     "naziv": "NOMAD TOURS, obrt za taksi prijevoz",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99287382": {
     "naziv": "CANTANTE, obrt za izvođačke djelatnosti",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99288397": {
     "naziv": "Mi-Ni CLEAN, obrt za čišćenje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99289385": {
     "naziv": "Omega Servis, obrt za građevinske i poljoprivredne usluge, cestovni prijevoz i ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99289946": {
     "naziv": "JERGOVIĆ PRIJEVODI, obrt za prevoditeljske usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99296446": {
     "naziv": "FLORA, obrt za pranje rublja",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99297973": {
     "naziv": "Nexum, obrt za izvođačke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99309688": {
     "naziv": "Nails Studio Lotus, obrt za uljepšavanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99310422": {
     "naziv": "TATAU CREATIVE COLLECTIVE, obrt za promidžbu i kreativne usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99318881": {
     "naziv": "EDV House, obrt za savjetovanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99323737": {
     "naziv": "KF Studio, obrt za grafički dizajn, pripremu za tisak i videoprodukciju",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99324962": {
     "naziv": "CVING INŽENJERING, obrt za inženjerstvo i tehničke usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99325098": {
     "naziv": "GEAGROOM, obrt za šišanje pasa",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99332078": {
     "naziv": "ATI HERD CONSULTING, obrt za poljoprivredno savjetovanje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99336901": {
     "naziv": "Quickmach, obrt za 3D printanje i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99344874": {
     "naziv": "TB STUDIO, obrt za proizvodnju i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99358212": {
     "naziv": "AIEDUKA, obrt za poslovno savjetovanje i edukaciju",
     "web": "https://www.aieduka.hr",
+    "telefon": null,
     "izvor": "domena"
   },
   "99359332": {
     "naziv": "Portrait, obrt za kreativne usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99359880": {
     "naziv": "TEALUX, obrt za pranje i čišćenje",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99360560": {
     "naziv": "MIHA DIVE TECH, obrt za podvodne radove",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99367432": {
     "naziv": "MB-Servis, obrt za usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99368528": {
     "naziv": "Collie & CO., obrt za šišanje i njegu pasa",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99369567": {
     "naziv": "Škola tambure Ivan Draženović, obrt za edukacije",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99376628": {
     "naziv": "VALPOVAČKI SJAJ, obrt za pranje i poliranje vozila",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99376881": {
     "naziv": "VESELI SLAVONAC, obrt za čišćenje i saniranje",
     "web": "https://veselislavonac.hr",
-    "izvor": "domena"
+    "telefon": "+385 99 565 6057",
+    "izvor": "domena",
+    "telefonIzvor": "web"
   },
   "99407426": {
     "naziv": "Casa di Lu, obrt za dizajn i usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   },
   "99408759": {
     "naziv": "TONLUX, obrt za ostale usluge",
-    "web": null
+    "web": null,
+    "telefon": null
   }
 }

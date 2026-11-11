@@ -13,6 +13,10 @@ export interface WebEntry {
   web: string | null;
   /** "turizam" | "domena" | "ručno" */
   izvor?: string;
+  /** Javni poslovni telefon (s weba obrta ili iz turističkog vodiča). */
+  telefon?: string | null;
+  /** Odakle je telefon: "web" | "turizam" | "ručno" */
+  telefonIzvor?: string;
 }
 
 export function loadWebOverrides(): Record<string, WebEntry> {
@@ -31,9 +35,13 @@ export async function loadObrti(file: string) {
       : parseObrti(readFileSync(path, 'utf8'));
   const web = loadWebOverrides();
   let withWeb = 0;
+  let withPhone = 0;
   for (const o of parsed.obrti) {
-    const w = o.mbo ? web[o.mbo]?.web : undefined;
-    if (w && !o.web) { o.web = w; withWeb++; }
+    const e = o.mbo ? web[o.mbo] : undefined;
+    if (e?.web && !o.web) o.web = e.web;
+    if (e?.telefon && !o.telefon) o.telefon = e.telefon;
+    if (o.web) withWeb++;
+    if (o.telefon) withPhone++;
   }
-  return { ...parsed, withWeb };
+  return { ...parsed, withWeb, withPhone };
 }

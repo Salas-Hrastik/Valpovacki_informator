@@ -34,9 +34,9 @@ async function main(): Promise<void> {
   const { buildObrtiDocs, syncObrtiDocs } = await import('../lib/ingest/obrti');
   const { loadObrti } = await import('./obrti-source');
 
-  const { obrti, skipped, columns, withWeb } = await loadObrti(file);
+  const { obrti, skipped, columns, withWeb, withPhone } = await loadObrti(file);
   console.log(`[obrti] Prepoznati stupci: ${columns.join(', ')}`);
-  console.log(`[obrti] ${obrti.length} aktivnih obrta s područja Grada Valpova (preskočeno: ${skipped}, s webom: ${withWeb}).`);
+  console.log(`[obrti] ${obrti.length} aktivnih obrta s područja Grada Valpova (preskočeno: ${skipped}, s webom: ${withWeb}, s telefonom: ${withPhone}).`);
   const docs = buildObrtiDocs(obrti, datum);
   console.log(`[obrti] ${docs.length} dokumenata (po djelatnosti):`);
   for (const d of docs) {
