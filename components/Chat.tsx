@@ -92,6 +92,10 @@ export default function Chat() {
   const speechEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref na startRecordingCycle — dostupan unutar startListening onerror-a za fallback
   const startRecordingCycleRef = useRef<() => Promise<void>>(async () => {});
+  // iOS: zastavica za slanje (continuous=false → restart loop; šaljemo tek kad finish() postavi ovu)
+  const shouldSendRef = useRef(false);
+  // iOS: transkript iz prethodnih ciklusa prepoznavanja (accumulate across restarts)
+  const iosBaseRef = useRef('');
 
   // Provjera podrške za glasovni unos. Probamo Web Speech API na svim platformama
   // (uključujući iOS 16.4+ koji ga podržava s interim rezultatima); na grešci
@@ -282,10 +286,10 @@ export default function Chat() {
     busyRef.current = busy;
   }, [busy]);
 
-  // Pokreni jedan ciklus slušanja. Po završetku govora (kratka stanka): ako je
-  // nešto izgovoreno, pitanje se ŠALJE automatski; ako nije, ciklus se obnavlja
-  // (preko efekta niže) dok je glasovni razgovor uključen.
-  const startListening = useCallback(() => {
+  // Pokreni jedan ciklus slušanja. iOS ne podržava continuous=true pa koristimo
+  // restart petlju: nakon svakog onend nastavljamo slušati dok finish() ne postavi
+  // shouldSendRef (2,5 s tišine) ili korisnik ne pritisne "Gotovo".
+  const startListening = useCallback((isRestart = false) => {
     if (recognitionRef.current) return;
     const w = window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
@@ -293,11 +297,17 @@ export default function Chat() {
     };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
-    transcriptRef.current = '';
+    // Na svježem startu resetiramo transkript; na iOS restartu čuvamo akumulirani tekst
+    if (!isRestart) transcriptRef.current = '';
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const rec = new Ctor();
     rec.lang = 'hr-HR';
     rec.interimResults = true;
-    rec.continuous = true; // kontinuirano — ne prekidaj na svaku kratku pauzu
+    // iOS ne podržava continuous=true (odmah abortira ili ignorira govor);
+    // koristimo false + restart petlju u onend.
+    rec.continuous = !isIOS;
     const clearWsTimers = () => {
       for (const r of [speechEndTimerRef, idleTimerRef]) {
         if (r.current) {
@@ -308,6 +318,7 @@ export default function Chat() {
     };
     const finish = () => {
       clearWsTimers();
+      shouldSendRef.current = true; // signalizira onend-u da pošalje
       try {
         rec.stop(); // → onend (šalje prepoznati tekst)
       } catch {
@@ -315,8 +326,13 @@ export default function Chat() {
       }
     };
     rec.onresult = (event) => {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
+      let sessionText = '';
+      for (let i = 0; i < event.results.length; i++) sessionText += event.results[i][0].transcript;
+      // iOS (continuous=false): svaki ciklus daje rezultate samo za tu sesiju;
+      // akumuliramo s prethodnim ciklusima pohranjenim u iosBaseRef.
+      const text = isIOS && iosBaseRef.current
+        ? iosBaseRef.current + ' ' + sessionText
+        : sessionText;
       transcriptRef.current = text;
       setInput(text);
       if (taRef.current) autoGrow(taRef.current);
@@ -330,12 +346,18 @@ export default function Chat() {
       speechEndTimerRef.current = setTimeout(finish, 2500);
     };
     rec.onend = () => {
-      clearWsTimers();
       recognitionRef.current = null;
-      setListening(false);
       const wasActive = voiceModeRef.current;
-      // Diktat je JEDAN KRUG: nakon stanke (ili ručnog zaustavljanja) glasovni se
-      // unos gasi i pitanje se šalje — bez ponovnog automatskog slušanja.
+      // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
+      // ako finish() još nije postavio zastavicu, nastavljamo slušati.
+      if (isIOS && wasActive && !shouldSendRef.current) {
+        iosBaseRef.current = transcriptRef.current; // sačuvaj dosad prepoznato
+        setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 80);
+        return; // NE čistimo timere — speechEndTimer nastavlja odbrojavanje
+      }
+      clearWsTimers();
+      setListening(false);
+      shouldSendRef.current = false;
       voiceModeRef.current = false;
       setVoiceMode(false);
       if (!wasActive) return;
@@ -374,13 +396,18 @@ export default function Chat() {
         setVoiceMode(false);
         return;
       }
-      // 'no-speech'/'aborted' su normalni — efekt niže opet pokrene slušanje.
+      // 'no-speech'/'aborted' — ponovo pokrenemo ako smo još u modu diktata
+      if (voiceModeRef.current) {
+        setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 150);
+      } else {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+      }
     };
     recognitionRef.current = rec;
     setListening(true);
     try {
       rec.start();
-      // Ako se govor uopće ne pojavi, prekini nakon ~8 s (efekt pokreće novi ciklus).
       idleTimerRef.current = setTimeout(finish, 8000);
     } catch {
       recognitionRef.current = null;
@@ -590,6 +617,9 @@ export default function Chat() {
     setVoiceErr('');
     voiceModeRef.current = true;
     setVoiceMode(true);
+    shouldSendRef.current = false;
+    iosBaseRef.current = '';
+    transcriptRef.current = '';
     startCapture();
     // Scroll input into view so interim transcript text is immediately visible
     setTimeout(() => taRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
@@ -600,6 +630,7 @@ export default function Chat() {
     if (useRecorderRef.current) {
       stopRecording(); // → onstop: prijepis (Whisper) + slanje
     } else {
+      shouldSendRef.current = true; // force-send na sljedećem onend (iOS restart petlja)
       try {
         recognitionRef.current?.stop(); // → onend: slanje prepoznatog teksta
       } catch {
