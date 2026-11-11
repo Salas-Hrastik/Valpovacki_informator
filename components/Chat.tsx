@@ -90,9 +90,12 @@ export default function Chat() {
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref na startRecordingCycle — dostupan unutar startListening onerror-a za fallback
+  const startRecordingCycleRef = useRef<() => Promise<void>>(async () => {});
 
-  // Provjera podrške za glasovni unos. Prednost Web Speech API-ju; ako ga nema
-  // (npr. iPhone/Safari), koristimo snimanje + /api/transcribe.
+  // Provjera podrške za glasovni unos. Probamo Web Speech API na svim platformama
+  // (uključujući iOS 16.4+ koji ga podržava s interim rezultatima); na grešci
+  // automatski padamo na MediaRecorder + /api/transcribe.
   useEffect(() => {
     const w = window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
@@ -103,13 +106,9 @@ export default function Chat() {
       typeof MediaRecorder !== 'undefined' &&
       !!navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === 'function';
-    // iOS Safari ZNA prijaviti webkitSpeechRecognition koji ne radi — zato na
-    // iOS-u (ako je dostupno snimanje) UVIJEK biramo snimanje + /api/transcribe.
-    const ua = navigator.userAgent || '';
-    const isIOS =
-      /iPad|iPhone|iPod/.test(ua) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const preferRecorder = recorder && (isIOS || !webSpeech);
+    // Web Speech API ima prioritet na svim platformama (daje tekst u realnom
+    // vremenu). Recorder je fallback kad Web Speech nije dostupan ili ne radi.
+    const preferRecorder = recorder && !webSpeech;
     useRecorderRef.current = preferRecorder;
     setUseRecorder(preferRecorder);
     setVoiceSupported(preferRecorder || webSpeech);
@@ -353,10 +352,27 @@ export default function Chat() {
       recognitionRef.current = null;
       setListening(false);
       const err = event?.error;
-      // Fatalne greške (nema dopuštenja/mikrofona) — ugasi mod da ne vrti u krug.
-      if (err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture') {
+      // Fatalne greške (nema dopuštenja/mikrofona) — ugasi mod.
+      if (err === 'not-allowed' || err === 'audio-capture') {
         voiceModeRef.current = false;
         setVoiceMode(false);
+        return;
+      }
+      // Web Speech service nedostupan (network/service greška) → automatski
+      // padi na MediaRecorder + Whisper ako je dostupan (npr. stariji iOS).
+      if (err === 'network' || err === 'service-not-allowed' || err === 'language-not-supported') {
+        const hasRecorder =
+          typeof MediaRecorder !== 'undefined' &&
+          !!navigator.mediaDevices?.getUserMedia;
+        if (hasRecorder && voiceModeRef.current) {
+          useRecorderRef.current = true;
+          setUseRecorder(true);
+          void startRecordingCycleRef.current();
+          return;
+        }
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        return;
       }
       // 'no-speech'/'aborted' su normalni — efekt niže opet pokrene slušanje.
     };
@@ -395,10 +411,8 @@ export default function Chat() {
     mediaRecorderRef.current = null;
   }, []);
 
-  // Fallback unos SNIMANJEM (iPhone/Safari): snimi zvuk, automatski stani nakon
-  // kratke tišine, pošalji /api/transcribe (Whisper) i tretiraj prijepis kao
-  // izgovoreno pitanje. "listening" ostaje uključen tijekom prijepisa da se ne
-  // pokrene novi ciklus prerano.
+  // Fallback unos SNIMANJEM (stariji iOS / uređaji bez Web Speech): snimi zvuk,
+  // automatski stani nakon kratke tišine, pošalji /api/transcribe (Whisper).
   const startRecordingCycle = useCallback(async () => {
     if (mediaRecorderRef.current) return;
     let stream: MediaStream;
@@ -549,6 +563,9 @@ export default function Chat() {
       /* ignoriraj */
     }
   };
+
+  // Drži ref ažurnim — startListening-ov onerror može pozvati fallback bez closure-problema
+  useEffect(() => { startRecordingCycleRef.current = startRecordingCycle; }, [startRecordingCycle]);
 
   // Jedinstveni pokretač "slušanja": Web Speech ako je dostupan, inače snimanje.
   const startCapture = useCallback(() => {
