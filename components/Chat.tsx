@@ -357,10 +357,15 @@ export default function Chat() {
       // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
       // ako finish() još nije postavio zastavicu, nastavljamo slušati.
       if (isIOS && wasActive && !shouldSendRef.current) {
-        // Ne diramo speechEndTimerRef — neka odbrojava 2,5 s od zadnjeg prepoznatog
-        // govora, bez obzira na iOS granice sesija. Ako korisnik nastavi govoriti,
-        // onresult u novoj sesiji će ga resetirati. Time prirodno detektiramo tišinu.
         iosBaseRef.current = transcriptRef.current; // sačuvaj dosad prepoznato
+        // Ako timer teče (nešto je prepoznato), produžimo mu rok: novi ciklus
+        // treba 500–2000 ms da se inicijalizira i stigne do onresult.
+        // onresult u novom ciklusu će resetirati na 2500 ms od tada.
+        // Ako timer ne teče (korisnik još nije ništa rekao), ne diramo ništa.
+        if (speechEndTimerRef.current) {
+          clearTimeout(speechEndTimerRef.current);
+          speechEndTimerRef.current = setTimeout(finish, 4000);
+        }
         setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 80);
         return;
       }
