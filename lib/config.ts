@@ -104,6 +104,10 @@ const SEED_URLS_DEFAULT = [
   // Stranica s popisom Službenih glasnika — s nje crawler otkriva sve PDF glasnike
   'https://valpovo.hr/sluzbeni-glasnici/',
   'https://valpovo.hr/',
+  // Cjenik gospodarenja otpadom (Urbanizam d.o.o.) — stranica + aktualni PDF cjenika.
+  // PDF sadrži konkretne cijene odvoza za grad Valpovo i prigradska naselja.
+  'https://www.urbanizam-valpovo.hr/cjenik-gospodarenja-otpadom/',
+  'https://www.urbanizam-valpovo.hr/wp-content/uploads/2026/10/Cjenik-gospodarenja-otpadom-15.10.2026-1.pdf',
 ];
 
 // Uzorci za preskakanje bezvrijednih URL-ova (uglavnom WordPress arhive/feedovi

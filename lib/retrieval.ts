@@ -154,6 +154,27 @@ export async function retrieve(
     }
   }
 
+  // 3c-3) Upiti o cijenama odvoza otpada/smeća: cjenik PDF nema published_at pa
+  // fetchRecentChunks ga ne pronađe — force-load po URL uzorku.
+  if (isCjenikOtpadaQuery(query)) {
+    try {
+      const { data: cjenikDocs } = await sb
+        .from('dokumenti')
+        .select('url')
+        .ilike('url', '%urbanizam-valpovo.hr%cjenik%')
+        .limit(5);
+      if (cjenikDocs && cjenikDocs.length > 0) {
+        const urls = (cjenikDocs as { url: string }[]).map((r) => r.url);
+        const cjenik = await fetchChunksByUrls(sb, urls, 4, threshold);
+        const have = new Set(candidates.map((c) => c.chunk_id));
+        const fresh = cjenik.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+        candidates.unshift(...fresh);
+      }
+    } catch (e) {
+      console.error('[retrieval] dohvat cjenika otpada nije uspio:', e);
+    }
+  }
+
   // 3d) Lokalne usluge (taksi, kolodvor, pošta, banke, parking, frizeri…): kratki
   // dokumenti turističkog vodiča inače ispadnu pred dugačkim PDF-ovima (prostorni
   // planovi, glasnici) koji usput spominju iste riječi — ubacujemo pogođene kategorije.
@@ -317,6 +338,19 @@ const KOMUNALNA_PATTERNS = [
 function isKomunalnaQuery(query: string): boolean {
   const q = query.toLowerCase();
   return KOMUNALNA_PATTERNS.some((p) => q.includes(p));
+}
+
+// Upiti o cijenama odvoza komunalnog otpada/smeća — za force-load cjenik PDF-a.
+const CJENIK_OTPADA_PATTERNS = [
+  'cijena odvoz', 'cijene odvoz', 'koliko košta odvoz', 'koliko kosta odvoz',
+  'cijena smeć', 'cijene smeć', 'cijena smec', 'koliko košta smeć', 'koliko kosta smec',
+  'cijena otpad', 'cijene otpad', 'koliko košta otpad', 'koliko kosta otpad',
+  'cjenik odvoz', 'cjenik otpad', 'cjenik smeć', 'cjenik smec',
+  'tarifa odvoz', 'naknada za otpad', 'naknada za smeć',
+];
+function isCjenikOtpadaQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return CJENIK_OTPADA_PATTERNS.some((p) => q.includes(p));
 }
 
 // Prepoznavanje DEMOGRAFSKIH upita (stanovnici, popis, naselja…) — ključni
