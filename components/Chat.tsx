@@ -382,11 +382,12 @@ export default function Chat() {
       clearWsTimers();
       recognitionRef.current = null;
       setListening(false);
-      const err = event?.error;
+      const err = event?.error ?? 'unknown';
       // Fatalne greške (nema dopuštenja/mikrofona) — ugasi mod.
       if (err === 'not-allowed' || err === 'audio-capture') {
         voiceModeRef.current = false;
         setVoiceMode(false);
+        setVoiceErr('Mikrofon nije dopušten. Molite odobrite pristup mikrofonu u postavkama preglednika.');
         return;
       }
       // Web Speech service nedostupan (network/service greška) → automatski
@@ -398,11 +399,13 @@ export default function Chat() {
         if (hasRecorder && voiceModeRef.current) {
           useRecorderRef.current = true;
           setUseRecorder(true);
+          setVoiceErr(`Web Speech greška (${err}) — prebačeno na snimanje.`);
           void startRecordingCycleRef.current();
           return;
         }
         voiceModeRef.current = false;
         setVoiceMode(false);
+        setVoiceErr(`Web Speech nedostupan (${err}). Molite osvježite stranicu.`);
         return;
       }
       // 'no-speech'/'aborted' — ponovo pokrenemo ako smo još u modu diktata
@@ -422,11 +425,12 @@ export default function Chat() {
       // za slučaj da korisnik uopće ne govori u novoj sesiji.
       const idleMs = 8000;
       idleTimerRef.current = setTimeout(finish, idleMs);
-    } catch {
+    } catch (e) {
       recognitionRef.current = null;
       setListening(false);
       voiceModeRef.current = false;
       setVoiceMode(false);
+      setVoiceErr(`Greška pokretanja prepoznavanja govora: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
