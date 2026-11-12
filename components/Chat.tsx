@@ -353,12 +353,9 @@ export default function Chat() {
       // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
       // ako finish() još nije postavio zastavicu, nastavljamo slušati.
       if (isIOS && wasActive && !shouldSendRef.current) {
-        // Brišemo speechEndTimer: ako ostane aktivan, okida finish() dok korisnik
-        // još govori u novom ciklusu → šalje samo prvu riječ/frazu.
-        if (speechEndTimerRef.current) {
-          clearTimeout(speechEndTimerRef.current);
-          speechEndTimerRef.current = null;
-        }
+        // Ne diramo speechEndTimerRef — neka odbrojava 2,5 s od zadnjeg prepoznatog
+        // govora, bez obzira na iOS granice sesija. Ako korisnik nastavi govoriti,
+        // onresult u novoj sesiji će ga resetirati. Time prirodno detektiramo tišinu.
         iosBaseRef.current = transcriptRef.current; // sačuvaj dosad prepoznato
         setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 80);
         return;
@@ -416,9 +413,10 @@ export default function Chat() {
     setListening(true);
     try {
       rec.start();
-      // iOS restart s akumuliranim tekstom: kraći idle (2,5 s) jer korisnik
-      // vjerojatno nije nastavio govoriti — ako jeste, onresult će odgoditi slanje.
-      const idleMs = (isIOS && isRestart && iosBaseRef.current) ? 2500 : 8000;
+      // Uvijek 8 s idle fallback — speechEndTimerRef (2,5 s od zadnjeg govora)
+      // je pravi mehanizam za detekciju kraja govora; idleMs je samo rezerva
+      // za slučaj da korisnik uopće ne govori u novoj sesiji.
+      const idleMs = 8000;
       idleTimerRef.current = setTimeout(finish, idleMs);
     } catch {
       recognitionRef.current = null;
