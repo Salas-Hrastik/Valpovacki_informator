@@ -354,7 +354,10 @@ export default function Chat() {
         idleTimerRef.current = null;
       }
       if (speechEndTimerRef.current) clearTimeout(speechEndTimerRef.current);
-      speechEndTimerRef.current = setTimeout(finish, 2500);
+      // iOS: restart petlja treba ~500 ms inicijalizacije novog ciklusa; 2500 ms
+      // je prekratko — finish() puca u rupe između ciklusa. 4000 ms daje dovoljno
+      // buffer-a da novi ciklus stigne do onresult prije nego timer pošalje.
+      speechEndTimerRef.current = setTimeout(finish, isIOS ? 4000 : 2500);
     };
     rec.onend = () => {
       recognitionRef.current = null;
