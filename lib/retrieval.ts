@@ -119,6 +119,28 @@ export async function retrieve(
     }
   }
 
+  // 3c-1) Demografski upiti (stanovnici, popis, naselja…): relevantni chunkovi su u
+  // PPUG/UPU dokumentima koji vektorski ispadaju iza glasnika — dohvat po URL uzorku.
+  if (isDemographyQuery(query)) {
+    try {
+      const { data: demoRows } = await sb
+        .from('dokumenti')
+        .select('url')
+        .or(DEMOGRAPHY_URL_PATTERNS.map((p) => `url.ilike.%${p}%`).join(','))
+        .eq('source', 'valpovo.hr')
+        .limit(8);
+      if (demoRows && demoRows.length > 0) {
+        const demoUrls = (demoRows as { url: string }[]).map((r) => r.url);
+        const demo = await fetchChunksByUrls(sb, demoUrls, 3, threshold);
+        const have = new Set(candidates.map((c) => c.chunk_id));
+        const fresh = demo.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+        candidates.push(...fresh); // dodaj iza vektorskih (rerank će prerasporediti)
+      }
+    } catch (e) {
+      console.error('[retrieval] dohvat demografskih dokumenata nije uspio:', e);
+    }
+  }
+
   // 3c-2) Komunalni/urbanistički upiti (vpc.hr, urbanizam-valpovo.hr): vektorska
   // pretraga ne probija do pravih stranica jer ih PDF-ovi i glasnici zatrpaju.
   if (isKomunalnaQuery(query)) {
@@ -296,6 +318,20 @@ function isKomunalnaQuery(query: string): boolean {
   const q = query.toLowerCase();
   return KOMUNALNA_PATTERNS.some((p) => q.includes(p));
 }
+
+// Prepoznavanje DEMOGRAFSKIH upita (stanovnici, popis, naselja…) — ključni
+// chunkovi su u PPUG dokumentima koji inače ispadaju iza glasnika/zapisnika.
+const DEMOGRAPHY_PATTERNS = [
+  'stanovnik', 'stanovniš', 'stanovnistvo', 'stanovništv', 'popis stanovn',
+  'prigradsk', 'naselje', 'naselja', 'živi u', 'zivi u', 'broji', 'broj stanovnika',
+  'kućanstv', 'kucanstv', 'domacinstv', 'domaćinstv',
+];
+function isDemographyQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return DEMOGRAPHY_PATTERNS.some((p) => q.includes(p));
+}
+
+const DEMOGRAPHY_URL_PATTERNS = ['PPUG', 'ppug', 'UPU', 'upu', 'prostorni'];
 
 // Prepoznavanje upita "po svježini" (vijesti/događanja/danas…), za koje uz vektorsku
 // pretragu dovlačimo i najnovije dokumente po datumu objave.
