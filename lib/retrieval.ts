@@ -175,6 +175,27 @@ export async function retrieve(
     }
   }
 
+  // 3c-4) Župni upiti (misa, župni ured, raspored…): Wix stranica je indeksirana ali
+  // vektorska pretraga je ne rangira visoko jer je sadržaj oskudan.
+  if (isZupaQuery(query)) {
+    try {
+      const { data: zupaDocs } = await sb
+        .from('dokumenti')
+        .select('url')
+        .ilike('url', '%zupavalpo.wixsite.com%')
+        .limit(5);
+      if (zupaDocs && zupaDocs.length > 0) {
+        const urls = (zupaDocs as { url: string }[]).map((r) => r.url);
+        const zupa = await fetchChunksByUrls(sb, urls, 4, threshold);
+        const have = new Set(candidates.map((c) => c.chunk_id));
+        const fresh = zupa.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+        candidates.unshift(...fresh);
+      }
+    } catch (e) {
+      console.error('[retrieval] dohvat župnih stranica nije uspio:', e);
+    }
+  }
+
   // 3d) Lokalne usluge (taksi, kolodvor, pošta, banke, parking, frizeri…): kratki
   // dokumenti turističkog vodiča inače ispadnu pred dugačkim PDF-ovima (prostorni
   // planovi, glasnici) koji usput spominju iste riječi — ubacujemo pogođene kategorije.
@@ -338,6 +359,20 @@ const KOMUNALNA_PATTERNS = [
 function isKomunalnaQuery(query: string): boolean {
   const q = query.toLowerCase();
   return KOMUNALNA_PATTERNS.some((p) => q.includes(p));
+}
+
+// Upiti o župi/crkvi (raspored misa, župni ured, župnik…) — za force-load Wix stranice.
+const ZUPA_PATTERNS = [
+  'žup', 'zup', 'crkv', 'misa', 'mise', 'misu', 'bogosluž', 'bogosluz',
+  'župnik', 'zupnik', 'kapelan', 'župni ured', 'zupni ured',
+  'kateheza', 'vjeronauk', 'krštenje', 'krstenje', 'vjenčanj', 'vjencanj',
+  'sakrament', 'ispovijed', 'pričest', 'krizm', 'sveta misa',
+  'sveti tjedan', 'uskrs', 'blagdan', 'advent', 'božić', 'bozic',
+  'župa valpovo', 'zupa valpovo',
+];
+function isZupaQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return ZUPA_PATTERNS.some((p) => q.includes(p));
 }
 
 // Upiti o cijenama odvoza komunalnog otpada/smeća — za force-load cjenik PDF-a.
