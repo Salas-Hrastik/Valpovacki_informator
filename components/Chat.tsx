@@ -297,12 +297,8 @@ export default function Chat() {
     };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
-    // Na svježem startu resetiramo transkript i iOS akumulirani tekst;
-    // na iOS restartu čuvamo akumulirani tekst u iosBaseRef.
-    if (!isRestart) {
-      transcriptRef.current = '';
-      iosBaseRef.current = '';
-    }
+    // Na svježem startu resetiramo transkript; na iOS restartu čuvamo akumulirani tekst
+    if (!isRestart) transcriptRef.current = '';
     const isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -357,15 +353,10 @@ export default function Chat() {
       // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
       // ako finish() još nije postavio zastavicu, nastavljamo slušati.
       if (isIOS && wasActive && !shouldSendRef.current) {
+        // Ne diramo speechEndTimerRef — neka odbrojava 2,5 s od zadnjeg prepoznatog
+        // govora, bez obzira na iOS granice sesija. Ako korisnik nastavi govoriti,
+        // onresult u novoj sesiji će ga resetirati. Time prirodno detektiramo tišinu.
         iosBaseRef.current = transcriptRef.current; // sačuvaj dosad prepoznato
-        // Ako timer teče (nešto je prepoznato), produžimo mu rok: novi ciklus
-        // treba 500–2000 ms da se inicijalizira i stigne do onresult.
-        // onresult u novom ciklusu će resetirati na 2500 ms od tada.
-        // Ako timer ne teče (korisnik još nije ništa rekao), ne diramo ništa.
-        if (speechEndTimerRef.current) {
-          clearTimeout(speechEndTimerRef.current);
-          speechEndTimerRef.current = setTimeout(finish, 4000);
-        }
         setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 80);
         return;
       }
@@ -387,12 +378,11 @@ export default function Chat() {
       clearWsTimers();
       recognitionRef.current = null;
       setListening(false);
-      const err = event?.error ?? 'unknown';
+      const err = event?.error;
       // Fatalne greške (nema dopuštenja/mikrofona) — ugasi mod.
       if (err === 'not-allowed' || err === 'audio-capture') {
         voiceModeRef.current = false;
         setVoiceMode(false);
-        setVoiceErr('Mikrofon nije dopušten. Molite odobrite pristup mikrofonu u postavkama preglednika.');
         return;
       }
       // Web Speech service nedostupan (network/service greška) → automatski
@@ -404,13 +394,11 @@ export default function Chat() {
         if (hasRecorder && voiceModeRef.current) {
           useRecorderRef.current = true;
           setUseRecorder(true);
-          setVoiceErr(`Web Speech greška (${err}) — prebačeno na snimanje.`);
           void startRecordingCycleRef.current();
           return;
         }
         voiceModeRef.current = false;
         setVoiceMode(false);
-        setVoiceErr(`Web Speech nedostupan (${err}). Molite osvježite stranicu.`);
         return;
       }
       // 'no-speech'/'aborted' — ponovo pokrenemo ako smo još u modu diktata
@@ -430,12 +418,11 @@ export default function Chat() {
       // za slučaj da korisnik uopće ne govori u novoj sesiji.
       const idleMs = 8000;
       idleTimerRef.current = setTimeout(finish, idleMs);
-    } catch (e) {
+    } catch {
       recognitionRef.current = null;
       setListening(false);
       voiceModeRef.current = false;
       setVoiceMode(false);
-      setVoiceErr(`Greška pokretanja prepoznavanja govora: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
@@ -644,19 +631,6 @@ export default function Chat() {
     shouldSendRef.current = false;
     iosBaseRef.current = '';
     transcriptRef.current = '';
-    // Resetiraj Whisper-fallback zastavicu: prolazna Web Speech greška iz prethodne
-    // sesije ne smije trajno zaključati app u Whisper mod. Ako Web Speech postoji,
-    // pokušaj ga opet; onerror će opet prebaciti na Whisper ako zatreba.
-    {
-      const w = window as unknown as {
-        SpeechRecognition?: unknown;
-        webkitSpeechRecognition?: unknown;
-      };
-      if (w.SpeechRecognition || w.webkitSpeechRecognition) {
-        useRecorderRef.current = false;
-        setUseRecorder(false);
-      }
-    }
     startCapture();
     // Scroll input into view so interim transcript text is immediately visible
     setTimeout(() => taRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
