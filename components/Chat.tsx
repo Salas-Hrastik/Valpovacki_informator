@@ -635,6 +635,19 @@ export default function Chat() {
     shouldSendRef.current = false;
     iosBaseRef.current = '';
     transcriptRef.current = '';
+    // Resetiraj Whisper-fallback zastavicu: prolazna Web Speech greška iz prethodne
+    // sesije ne smije trajno zaključati app u Whisper mod. Ako Web Speech postoji,
+    // pokušaj ga opet; onerror će opet prebaciti na Whisper ako zatreba.
+    {
+      const w = window as unknown as {
+        SpeechRecognition?: unknown;
+        webkitSpeechRecognition?: unknown;
+      };
+      if (w.SpeechRecognition || w.webkitSpeechRecognition) {
+        useRecorderRef.current = false;
+        setUseRecorder(false);
+      }
+    }
     startCapture();
     // Scroll input into view so interim transcript text is immediately visible
     setTimeout(() => taRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
