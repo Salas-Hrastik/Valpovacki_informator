@@ -119,6 +119,19 @@ export async function retrieve(
     }
   }
 
+  // 3c-2) Komunalni/urbanistički upiti (vpc.hr, urbanizam-valpovo.hr): vektorska
+  // pretraga ne probija do pravih stranica jer ih PDF-ovi i glasnici zatrpaju.
+  if (isKomunalnaQuery(query)) {
+    try {
+      const kom = await fetchRecentChunks(sb, config.komunalnaHosts, topK + 6, threshold, 4);
+      const have = new Set(candidates.map((c) => c.chunk_id));
+      const fresh = kom.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+      candidates.unshift(...fresh);
+    } catch (e) {
+      console.error('[retrieval] dohvat komunalnih stranica nije uspio:', e);
+    }
+  }
+
   // 3d) Lokalne usluge (taksi, kolodvor, pošta, banke, parking, frizeri…): kratki
   // dokumenti turističkog vodiča inače ispadnu pred dugačkim PDF-ovima (prostorni
   // planovi, glasnici) koji usput spominju iste riječi — ubacujemo pogođene kategorije.
@@ -262,6 +275,26 @@ function lexicalQuery(query: string): string {
     .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
     .filter((w) => w.length >= 4);
   return words.length > 0 ? words.join(' ') : query;
+}
+
+// Prepoznavanje KOMUNALNIH/URBANISTIČKIH upita, za koje ubacujemo stranice
+// vpc.hr (komunalna) i urbanizam-valpovo.hr (prostorno planiranje/dozvole).
+const KOMUNALNA_PATTERNS = [
+  'komunal', 'komunaln', 'odvoz', 'otpad', 'smeće', 'smece', 'kontejner',
+  'odlagalist', 'reciklažn', 'reciklazn', 'zeleni otok', 'recikliraj',
+  'groblje', 'groblje', 'groblj', 'grobnič', 'pogrebna',
+  'dimnjačar', 'dimnjačarsk', 'dimnjacarski',
+  'javna rasvjet', 'uličn', 'ulicn', 'cestad', 'cesta',
+  'parkiralište', 'parkiraList', 'parkiranje',
+  'urbaniz', 'prostorn', 'lokacijska', 'građevinska dozvol', 'gradevin dozvol',
+  'uporabna dozvol', 'legalizacij', 'ishodit dozvol',
+  'GUP', 'UPU', 'DPU', 'PPUG', 'regulacijski plan', 'detaljni plan',
+  'komunalni red', 'komunalni doprinos', 'komunalna naknada',
+  'vpc', 'valpovačko-podravska', 'valpovacko-podravska',
+];
+function isKomunalnaQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return KOMUNALNA_PATTERNS.some((p) => q.includes(p));
 }
 
 // Prepoznavanje upita "po svježini" (vijesti/događanja/danas…), za koje uz vektorsku

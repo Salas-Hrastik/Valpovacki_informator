@@ -212,6 +212,12 @@ export const config = {
     'ljekarne-srce.hr', 'www.ljekarne-srce.hr',
     'ljekarne-kalenic.hr', 'www.ljekarne-kalenic.hr',
   ]),
+  // Domene komunalne/urbanističke tematike — za upite o komunalnoj službi,
+  // odvozima, prostornom planiranju, građevinskim dozvolama i sl.
+  komunalnaHosts: list('KOMUNALNA_HOSTS', [
+    'vpc.hr', 'www.vpc.hr',
+    'urbanizam-valpovo.hr', 'www.urbanizam-valpovo.hr',
+  ]),
   excludeUrlPatterns: list('EXCLUDE_URL_PATTERNS', EXCLUDE_URL_PATTERNS_DEFAULT),
   excludeSitemapPatterns: list('EXCLUDE_SITEMAP_PATTERNS', EXCLUDE_SITEMAP_PATTERNS_DEFAULT),
   // Filtri po domeni: za navedene domene uzimamo SAMO URL-ove koji sadrže neki od
