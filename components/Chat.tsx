@@ -96,8 +96,6 @@ export default function Chat() {
   const shouldSendRef = useRef(false);
   // iOS: transkript iz prethodnih ciklusa prepoznavanja (accumulate across restarts)
   const iosBaseRef = useRef('');
-  // iOS: broj uzastopnih restart ciklusa BEZ ijednog onresult — ako pređe prag, Web Speech je "zombie"
-  const iosEmptyRestartCountRef = useRef(0);
 
   // Provjera podrške za glasovni unos. Probamo Web Speech API na svim platformama
   // (uključujući iOS 16.4+ koji ga podržava s interim rezultatima); na grešci
@@ -304,7 +302,6 @@ export default function Chat() {
     if (!isRestart) {
       transcriptRef.current = '';
       iosBaseRef.current = '';
-      iosEmptyRestartCountRef.current = 0;
     }
     const isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -335,8 +332,6 @@ export default function Chat() {
       }
     };
     rec.onresult = (event) => {
-      // Audio radi — resetiraj zombie detektor
-      iosEmptyRestartCountRef.current = 0;
       let sessionText = '';
       for (let i = 0; i < event.results.length; i++) sessionText += event.results[i][0].transcript;
       // iOS (continuous=false): svaki ciklus daje rezultate samo za tu sesiju;
@@ -354,10 +349,7 @@ export default function Chat() {
         idleTimerRef.current = null;
       }
       if (speechEndTimerRef.current) clearTimeout(speechEndTimerRef.current);
-      // iOS: restart petlja treba ~500 ms inicijalizacije novog ciklusa; 2500 ms
-      // je prekratko — finish() puca u rupe između ciklusa. 4000 ms daje dovoljno
-      // buffer-a da novi ciklus stigne do onresult prije nego timer pošalje.
-      speechEndTimerRef.current = setTimeout(finish, isIOS ? 4000 : 2500);
+      speechEndTimerRef.current = setTimeout(finish, 2500);
     };
     rec.onend = () => {
       recognitionRef.current = null;
@@ -365,19 +357,6 @@ export default function Chat() {
       // iOS restart petlja: continuous=false → recognition staje nakon svakog iskaza;
       // ako finish() još nije postavio zastavicu, nastavljamo slušati.
       if (isIOS && wasActive && !shouldSendRef.current) {
-        // Zombie detekcija: ako smo se N puta restarali bez ijednog onresult,
-        // Web Speech API ne prima audio — ugasi mod i uputi korisnika.
-        const emptyCount = iosEmptyRestartCountRef.current + 1;
-        iosEmptyRestartCountRef.current = emptyCount;
-        if (emptyCount >= 3) {
-          iosEmptyRestartCountRef.current = 0;
-          clearWsTimers();
-          setListening(false);
-          voiceModeRef.current = false;
-          setVoiceMode(false);
-          setVoiceErr('Mikrofon ne reagira. Molite osvježite stranicu (zatvorite i otvorite karticu) i pokušajte ponovo.');
-          return;
-        }
         // Ne diramo speechEndTimerRef — neka odbrojava 2,5 s od zadnjeg prepoznatog
         // govora, bez obzira na iOS granice sesija. Ako korisnik nastavi govoriti,
         // onresult u novoj sesiji će ga resetirati. Time prirodno detektiramo tišinu.
