@@ -35,15 +35,39 @@ const MANUAL_DOCS: { key: string; title: string; text: string }[] = [
     text: `
 Župa Snježne Gospe, Harkanovci
 
-Župa Snježne Gospe smještena je u Harkanovcima, naselju u općini Valpovo.
+Župa Snježne Gospe pokriva tri mjesta u općini Valpovo: Harkanovci, Ivanovci i Zelčin.
 Župna crkva posvećena je Snježnoj Gospi.
 
 Adresa: Školska 1, 31227 Zelčin
+Telefon: 031/678-080
 E-mail: zupaharkanovci@gmail.com
+IBAN: HR36 2500 0091 1020 4396 0
 Facebook: https://www.facebook.com/p/Župa-Snježne-Gospe-Harkanovci-100057552159345/
 
-Za informacije o rasporedu misa, sakramentima (krštenje, vjenčanje, krizme, pričest, sprovod)
-i ostalim župnim aktivnostima obratite se župnom uredu putem e-maila ili Facebooka.
+RASPORED SVETIH MISA (redoviti tjedni raspored):
+- Nedjelja:
+  • 8:30 — Zelčin
+  • 9:45 — Ivanovci
+  • 11:00 — Harkanovci (pro populo)
+- Ponedjeljak: 8:00
+- Utorak, Srijeda, Četvrtak, Petak, Subota: 18:00
+
+ŽUPNI URED:
+Ured je otvoren svaki dan određeno vrijeme prije i poslije mise.
+Za dolazak se dogovorite telefonom ili e-mailom.
+Ulaz u ured je sa strane Školske ulice.
+Lučko (mesečne intencije) ne treba prijavljivati u sakristiji nego u župnom uredu.
+
+KATEHEZA:
+Susreti prvopričesnika i krizmanika subotom u 9:00 u župnoj kući u Harkanovcima.
+
+SVETIŠTE MAJKE NOVOG SAVEZA:
+- Subota (svaka druga u mjesecu): Krunica za muškarce u 8:00, nakon toga zajednički ručak.
+- Četvrtak u 20:00: Krunica za Domovinu (bratovština „Marijanski savjet za domovinu").
+- Nedjelja u 14:00: Svetište otvoreno za osobnu molitvu i pobožnost.
+
+Za informacije o sakramentima (krštenje, vjenčanje, krizme, pričest, sprovod/pogreb)
+obratite se župnom uredu telefonom, e-mailom ili osobno.
 `.trim(),
   },
 ];
