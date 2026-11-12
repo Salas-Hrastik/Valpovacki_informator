@@ -297,8 +297,12 @@ export default function Chat() {
     };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
-    // Na svježem startu resetiramo transkript; na iOS restartu čuvamo akumulirani tekst
-    if (!isRestart) transcriptRef.current = '';
+    // Na svježem startu resetiramo transkript i iOS akumulirani tekst;
+    // na iOS restartu čuvamo akumulirani tekst u iosBaseRef.
+    if (!isRestart) {
+      transcriptRef.current = '';
+      iosBaseRef.current = '';
+    }
     const isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
