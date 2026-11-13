@@ -91,13 +91,20 @@ export async function POST(req: Request): Promise<Response> {
 
     // 3) Streaming odgovor (Messages API)
     const anthropic = new Anthropic(); // čita ANTHROPIC_API_KEY iz okoline
+    // Haiku 5.x prema zadanom "razmišlja" prije odgovora (3–5 s do prvog slova, a
+    // razmišljanje troši max_tokens). Za kratke informativne odgovore ga gasimo.
+    // Instalirani SDK još nema tip za output_config, pa parametre dodajemo netipizirano.
+    const fastParams = config.claudeModel.startsWith('claude-haiku-5')
+      ? { thinking: { type: 'disabled' }, output_config: { effort: 'low' } }
+      : {};
     const stream = anthropic.messages.stream({
       model: config.claudeModel,
       max_tokens: config.claudeMaxTokens,
       // Sistemski prompt je isti za svaki upit → prompt caching (brže i jeftinije čitanje).
       system: [{ type: 'text', text: SYSTEM_PROMPT_HR, cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages,
-    });
+      ...fastParams,
+    } as Anthropic.MessageStreamParams);
 
     const encoder = new TextEncoder();
     const sse = (data: object) => encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
@@ -112,7 +119,12 @@ export async function POST(req: Request): Promise<Response> {
               controller.enqueue(sse({ type: 'delta', text: event.delta.text }));
             }
           }
-          await stream.finalMessage();
+          const final = await stream.finalMessage();
+          // Model je odbio odgovoriti (sigurnosni filtar) → bez teksta bi ostao prazan oblačić.
+          if (!answer && (final.stop_reason as string) === 'refusal') {
+            answer = 'Nažalost, na ovo pitanje ne mogu odgovoriti. Molim Vas, preformulirajte pitanje.';
+            controller.enqueue(sse({ type: 'delta', text: answer }));
+          }
           controller.enqueue(sse({ type: 'sources', sources }));
           controller.enqueue(sse({ type: 'done' }));
         } catch (err) {

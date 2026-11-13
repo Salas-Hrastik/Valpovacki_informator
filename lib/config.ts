@@ -155,8 +155,10 @@ const EXCLUDE_SITEMAP_PATTERNS_DEFAULT = [
 ];
 
 export const config = {
-  claudeModel: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
-  claudeMaxTokens: int('CLAUDE_MAX_TOKENS', 1024),
+  // Haiku 5.5 bez razmišljanja: na usporednom testu točan kao Sonnet 4.6, a cijeli
+  // odgovor stiže ~3x brže. Povratak na stari model: CLAUDE_MODEL=claude-sonnet-4-6.
+  claudeModel: process.env.CLAUDE_MODEL || 'claude-haiku-5-5',
+  claudeMaxTokens: int('CLAUDE_MAX_TOKENS', 2048),
 
   embeddingProvider: (process.env.EMBEDDING_PROVIDER || 'openai') as 'openai' | 'voyage',
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
