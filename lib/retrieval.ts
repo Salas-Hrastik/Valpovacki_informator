@@ -400,7 +400,7 @@ const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[]; obr
   { patterns: ['tržnic', 'trznic', 'opg', 'domaći proizvod', 'domaci proizvod', 'suvenir'], keys: ['kupovina.trznica', 'kupovina.opg', 'kupovina.lokalni_i_suveniri'] },
   { patterns: ['teretan', 'fitness', 'gym'], keys: ['sport.teretane'] },
   { patterns: ['apartman', 'smještaj', 'smjestaj', 'prenoć', 'prenoc', 'hotel', 'spavat', 'noćen', 'nocen'], keys: ['smjestaj.hoteli', 'smjestaj.apartmani', 'smjestaj.sobe', 'smjestaj.prenocista', 'smjestaj.ruralni_smjestaj'], obrti: ['smjestaj_i_iznajmljivanje'] },
-  { patterns: ['restoran', 'kafić', 'kafic', 'caffe', 'pizz', 'pekar', 'jesti', 'ručak', 'rucak', 'večer', 'veceru', 'burger', 'fast food', 'catering', 'ketering'], keys: ['gastronomija'], obrti: ['ugostiteljstvo_kafici_restorani_catering', 'proizvodnja_i_prodaja_hrane_pekare_mesnice_slastice'] },
+  { patterns: ['restoran', 'kafić', 'kafic', 'caffe', 'pizz', 'pekar', ' jesti', 'pojesti', 'ručak', 'rucak', ' večera ', 'večeru', 'večerat', ' vecera ', 'veceru', 'vecerat', 'burger', 'fast food', 'catering', 'ketering'], keys: ['gastronomija'], obrti: ['ugostiteljstvo_kafici_restorani_catering', 'proizvodnja_i_prodaja_hrane_pekare_mesnice_slastice'] },
   { patterns: ['bicikl', 'biciklist'], keys: ['priroda.biciklizam'] },
   // Obrti — razgovorni izrazi ("spremanje kuće", "majstor za bojler"…) koje vektorska
   // pretraga ne poveže sa službenim nazivima djelatnosti.
