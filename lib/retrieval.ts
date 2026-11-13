@@ -39,6 +39,58 @@ export async function retrieve(
   // Za reranking dohvaćamo ŠIRI skup kandidata pa ih LLM presloži po relevantnosti.
   const poolSize = config.ragRerank ? Math.max(config.ragRerankCandidates, topK) : topK;
 
+  // 0) Tematski dohvati (koraci 3b–3e) ne ovise o embeddingu, pa kreću ODMAH i teku
+  // usporedno s embeddingom i vektorskom pretragom; rezultati se niže primjenjuju
+  // istim redoslijedom kao prije. Greška pojedinog dohvata ne ruši odgovor.
+  const start = (label: string, run: () => Promise<RetrievedChunk[]>): Promise<RetrievedChunk[]> =>
+    run().catch((e) => {
+      console.error(`[retrieval] ${label} nije uspio:`, e);
+      return [];
+    });
+  const chunksByUrlPattern = async (pattern: string, perDoc: number): Promise<RetrievedChunk[]> => {
+    const { data } = await sb.from('dokumenti').select('url').ilike('url', pattern).limit(5);
+    if (!data || data.length === 0) return [];
+    return fetchChunksByUrls(sb, (data as { url: string }[]).map((r) => r.url), perDoc, threshold);
+  };
+  const serviceUrls = serviceTopicUrls(query);
+  const extras = {
+    recent: isRecencyQuery(query)
+      ? start('dohvat najnovijih dokumenata', () => fetchRecentChunks(sb, config.dailyHosts, topK + 4, threshold))
+      : null,
+    // SVI isječci (ne samo prvi): na naslovnici Doma zdravlja dežurstva su tek
+    // u drugom isječku, a stranice ambulanti/ljekarni su kratke.
+    health: isHealthQuery(query)
+      ? start('dohvat zdravstvenih stranica', () => fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold, 4))
+      : null,
+    demo: isDemographyQuery(query)
+      ? start('dohvat demografskih dokumenata', async () => {
+          const { data } = await sb
+            .from('dokumenti')
+            .select('url')
+            .or(DEMOGRAPHY_URL_PATTERNS.map((p) => `url.ilike.%${p}%`).join(','))
+            .eq('source', 'valpovo.hr')
+            .limit(8);
+          if (!data || data.length === 0) return [];
+          return fetchChunksByUrls(sb, (data as { url: string }[]).map((r) => r.url), 3, threshold);
+        })
+      : null,
+    kom: isKomunalnaQuery(query)
+      ? start('dohvat komunalnih stranica', () => fetchRecentChunks(sb, config.komunalnaHosts, topK + 6, threshold, 4))
+      : null,
+    cjenik: isCjenikOtpadaQuery(query)
+      ? start('dohvat cjenika otpada', () => chunksByUrlPattern('%urbanizam-valpovo.hr%cjenik%', 4))
+      : null,
+    zupa: isZupaQuery(query)
+      ? start('dohvat župnih stranica', () => chunksByUrlPattern('%zupavalpo.wixsite.com%', 4))
+      : null,
+    svc: serviceUrls.length > 0
+      ? start('dohvat lokalnih usluga', () => fetchChunksByUrls(sb, serviceUrls, 6, threshold))
+      : null,
+    council: isCouncilQuery(query)
+      ? start('dohvat sjednica Gradskog vijeća', () => fetchLatestCouncilChunks(sb, 3, 4, threshold))
+      : null,
+  };
+
   // 1) Vektorsko pretraživanje (širi skup) — HNSW indeks, brzo.
   const queryEmbedding = await embedText(query);
   const { data: vecRows, error: vecErr } = await sb.rpc('match_chunks', {
@@ -88,143 +140,31 @@ export async function retrieve(
     k++;
   }
 
-  // 3b) Upiti po SVJEŽINI ("najnovije vijesti", "današnja događanja"…): semantička
-  // sličnost tu ne pomaže (generičke riječi pogađaju stare glasnike/dokumente), pa
-  // dodatno dovlačimo NAJNOVIJE dokumente (po datumu objave) iz vijesti/događanja
-  // izvora i stavljamo ih NAPRIJED — rerank ih dalje presloži po relevantnosti.
-  if (isRecencyQuery(query)) {
-    try {
-      const recent = await fetchRecentChunks(sb, config.dailyHosts, topK + 4, threshold);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = recent.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat najnovijih dokumenata nije uspio:', e);
-    }
-  }
-
-  // 3c) Zdravstveni upiti ("ordinacije", "ambulante", "dom zdravlja"…): opće/nejasno
-  // pitanje ne mapira se na pojedine stranice ambulanti, pa ubacujemo SVE stranice
-  // Doma zdravlja (Valpovo) u izbor — rerank ih dalje presloži.
-  if (isHealthQuery(query)) {
-    try {
-      // SVI isječci (ne samo prvi): na naslovnici Doma zdravlja dežurstva su tek
-      // u drugom isječku, a stranice ambulanti/ljekarni su kratke.
-      const health = await fetchRecentChunks(sb, config.healthHosts, topK + 8, threshold, 4);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = health.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat zdravstvenih stranica nije uspio:', e);
-    }
-  }
-
-  // 3c-1) Demografski upiti (stanovnici, popis, naselja…): relevantni chunkovi su u
-  // PPUG/UPU dokumentima koji vektorski ispadaju iza glasnika — dohvat po URL uzorku.
-  if (isDemographyQuery(query)) {
-    try {
-      const { data: demoRows } = await sb
-        .from('dokumenti')
-        .select('url')
-        .or(DEMOGRAPHY_URL_PATTERNS.map((p) => `url.ilike.%${p}%`).join(','))
-        .eq('source', 'valpovo.hr')
-        .limit(8);
-      if (demoRows && demoRows.length > 0) {
-        const demoUrls = (demoRows as { url: string }[]).map((r) => r.url);
-        const demo = await fetchChunksByUrls(sb, demoUrls, 3, threshold);
-        const have = new Set(candidates.map((c) => c.chunk_id));
-        const fresh = demo.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-        candidates.push(...fresh); // dodaj iza vektorskih (rerank će prerasporediti)
-      }
-    } catch (e) {
-      console.error('[retrieval] dohvat demografskih dokumenata nije uspio:', e);
-    }
-  }
-
-  // 3c-2) Komunalni/urbanistički upiti (vpc.hr, urbanizam-valpovo.hr): vektorska
-  // pretraga ne probija do pravih stranica jer ih PDF-ovi i glasnici zatrpaju.
-  if (isKomunalnaQuery(query)) {
-    try {
-      const kom = await fetchRecentChunks(sb, config.komunalnaHosts, topK + 6, threshold, 4);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = kom.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat komunalnih stranica nije uspio:', e);
-    }
-  }
-
-  // 3c-3) Upiti o cijenama odvoza otpada/smeća: cjenik PDF nema published_at pa
-  // fetchRecentChunks ga ne pronađe — force-load po URL uzorku.
-  if (isCjenikOtpadaQuery(query)) {
-    try {
-      const { data: cjenikDocs } = await sb
-        .from('dokumenti')
-        .select('url')
-        .ilike('url', '%urbanizam-valpovo.hr%cjenik%')
-        .limit(5);
-      if (cjenikDocs && cjenikDocs.length > 0) {
-        const urls = (cjenikDocs as { url: string }[]).map((r) => r.url);
-        const cjenik = await fetchChunksByUrls(sb, urls, 4, threshold);
-        const have = new Set(candidates.map((c) => c.chunk_id));
-        const fresh = cjenik.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-        candidates.unshift(...fresh);
-      }
-    } catch (e) {
-      console.error('[retrieval] dohvat cjenika otpada nije uspio:', e);
-    }
-  }
-
-  // 3c-4) Župni upiti (misa, župni ured, raspored…): Wix stranica je indeksirana ali
-  // vektorska pretraga je ne rangira visoko jer je sadržaj oskudan.
-  if (isZupaQuery(query)) {
-    try {
-      const { data: zupaDocs } = await sb
-        .from('dokumenti')
-        .select('url')
-        .ilike('url', '%zupavalpo.wixsite.com%')
-        .limit(5);
-      if (zupaDocs && zupaDocs.length > 0) {
-        const urls = (zupaDocs as { url: string }[]).map((r) => r.url);
-        const zupa = await fetchChunksByUrls(sb, urls, 4, threshold);
-        const have = new Set(candidates.map((c) => c.chunk_id));
-        const fresh = zupa.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-        candidates.unshift(...fresh);
-      }
-    } catch (e) {
-      console.error('[retrieval] dohvat župnih stranica nije uspio:', e);
-    }
-  }
-
-  // 3d) Lokalne usluge (taksi, kolodvor, pošta, banke, parking, frizeri…): kratki
-  // dokumenti turističkog vodiča inače ispadnu pred dugačkim PDF-ovima (prostorni
-  // planovi, glasnici) koji usput spominju iste riječi — ubacujemo pogođene kategorije.
-  const serviceUrls = serviceTopicUrls(query);
-  if (serviceUrls.length > 0) {
-    try {
-      const svc = await fetchChunksByUrls(sb, serviceUrls, 6, threshold);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = svc.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat lokalnih usluga nije uspio:', e);
-    }
-  }
-
-  // 3e) Sjednice Gradskog vijeća ("zadnja sjednica", "dnevni red vijeća"…): pozivi i
-  // zapisnici svih saziva međusobno su gotovo identični, pa vektorska pretraga ne zna
-  // koji je NAJNOVIJI (a novi saziv broji sjednice ispočetka). Ubacujemo najnovije
-  // pozive/zapisnike Gradskog vijeća po datumu objave.
-  if (isCouncilQuery(query)) {
-    try {
-      const council = await fetchLatestCouncilChunks(sb, 3, 4, threshold);
-      const have = new Set(candidates.map((c) => c.chunk_id));
-      const fresh = council.filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
-      candidates.unshift(...fresh);
-    } catch (e) {
-      console.error('[retrieval] dohvat sjednica Gradskog vijeća nije uspio:', e);
-    }
-  }
+  // 3b–3e) Tematski dohvati pokrenuti u koraku 0 — primjena ISTIM redoslijedom kao
+  // prije (kasniji unshift ima veći prioritet; rerank ih dalje presloži):
+  //  - svježina ("najnovije vijesti", "današnja događanja"…): najnoviji dokumenti iz
+  //    vijesti/događanja izvora, jer generičke riječi inače pogađaju stare glasnike;
+  //  - zdravstvo: sve stranice Doma zdravlja/ljekarni;
+  //  - demografija: PPUG/UPU dokumenti koji vektorski ispadaju iza glasnika (idu IZA);
+  //  - komunalno/urbanizam (vpc.hr, urbanizam-valpovo.hr);
+  //  - cjenik odvoza otpada i župne stranice: nemaju published_at → dohvat po URL uzorku;
+  //  - lokalne usluge (taksi, pošta, banke…): kratki dokumenti turističkog vodiča;
+  //  - sjednice Gradskog vijeća: najnoviji pozivi/zapisnici po datumu objave.
+  const applyExtra = async (p: Promise<RetrievedChunk[]> | null, front: boolean): Promise<void> => {
+    if (!p) return;
+    const have = new Set(candidates.map((c) => c.chunk_id));
+    const fresh = (await p).filter((r) => !have.has(r.chunk_id) && isAllowedHostUrl(r.url));
+    if (front) candidates.unshift(...fresh);
+    else candidates.push(...fresh);
+  };
+  await applyExtra(extras.recent, true);
+  await applyExtra(extras.health, true);
+  await applyExtra(extras.demo, false);
+  await applyExtra(extras.kom, true);
+  await applyExtra(extras.cjenik, true);
+  await applyExtra(extras.zupa, true);
+  await applyExtra(extras.svc, true);
+  await applyExtra(extras.council, true);
 
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.

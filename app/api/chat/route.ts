@@ -94,7 +94,8 @@ export async function POST(req: Request): Promise<Response> {
     const stream = anthropic.messages.stream({
       model: config.claudeModel,
       max_tokens: config.claudeMaxTokens,
-      system: SYSTEM_PROMPT_HR,
+      // Sistemski prompt je isti za svaki upit → prompt caching (brže i jeftinije čitanje).
+      system: [{ type: 'text', text: SYSTEM_PROMPT_HR, cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages,
     });
 
