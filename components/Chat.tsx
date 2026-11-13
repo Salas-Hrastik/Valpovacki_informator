@@ -403,6 +403,9 @@ export default function Chat() {
       }
       // 'no-speech'/'aborted' — ponovo pokrenemo ako smo još u modu diktata
       if (voiceModeRef.current) {
+        // clearWsTimers je gore ugasio oba tajmera — vrati 8 s rezervu da se već
+        // prepoznati tekst pošalje i ako nakon greške više ne stigne nijedan rezultat.
+        idleTimerRef.current = setTimeout(finish, 8000);
         setTimeout(() => { if (voiceModeRef.current) startListening(true); }, 150);
       } else {
         voiceModeRef.current = false;
@@ -413,11 +416,14 @@ export default function Chat() {
     setListening(true);
     try {
       rec.start();
-      // Uvijek 8 s idle fallback — speechEndTimerRef (2,5 s od zadnjeg govora)
-      // je pravi mehanizam za detekciju kraja govora; idleMs je samo rezerva
-      // za slučaj da korisnik uopće ne govori u novoj sesiji.
-      const idleMs = 8000;
-      idleTimerRef.current = setTimeout(finish, idleMs);
+      // 8 s idle rezerva (korisnik uopće ne govori) pokreće se SAMO pri pritisku
+      // mikrofona, ne pri iOS restartu ciklusa: inače tajmer prijašnjeg ciklusa
+      // ostane aktivan bez reference i prekine slušanje usred rečenice. Kraj
+      // govora određuje speechEndTimerRef (2,5 s od zadnjeg prepoznatog govora).
+      if (!isRestart) {
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = setTimeout(finish, 8000);
+      }
     } catch {
       recognitionRef.current = null;
       setListening(false);
