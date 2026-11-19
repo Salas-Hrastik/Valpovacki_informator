@@ -9,7 +9,7 @@ import { config } from '../config';
 import { chunkText } from '../chunking';
 import { embedTexts, l2norm } from '../embeddings';
 import { supabaseAdmin } from '../supabase';
-import { fetchResource, gatherUrls, isAllowedHost, isOldArchiveUrl, normalizeUrl, sleep } from './crawler';
+import { discoverWpMediaPdfs, fetchResource, gatherUrls, isAllowedHost, isOldArchiveUrl, normalizeUrl, sleep } from './crawler';
 import {
   extractFromHtml,
   extractFromImage,
@@ -267,6 +267,33 @@ export async function runIngest(
       console.error(`[ingest] GREŠKA: ${url}`, e);
     }
     await sleep(config.crawlDelayMs);
+  }
+
+  // Nulti prolaz: NOVI PDF-ovi s WordPress sjedišta (REST API popis medija) kojih još
+  // nema u bazi — obrađuju se PRVI, najnoviji naprijed. Inače ih nalazimo samo kad se
+  // objava s poveznicom ponovno dohvati, a u velikom korpusu to zna potrajati tjednima.
+  // Ograničeno na 30% vremena; ostatak ide idući put.
+  if (!opts.onlyUrls && config.wpMediaHosts.length > 0) {
+    const hostOk = (u: string) => {
+      if (!opts.onlyHosts?.length) return true;
+      try {
+        return opts.onlyHosts.map((h) => h.toLowerCase()).includes(new URL(u).host.toLowerCase());
+      } catch {
+        return false;
+      }
+    };
+    const fresh = (await discoverWpMediaPdfs())
+      .filter((u) => hostOk(u) && !existingMap.has(u) && !isOldArchiveUrl(u))
+      .sort((a, b) => recencyScore(b) - recencyScore(a));
+    if (fresh.length > 0) console.log(`[ingest] WP media: ${fresh.length} novih PDF-ova — obrađujem prve.`);
+    const mediaDeadline = deadline === Infinity ? Infinity : startedAt + (deadline - startedAt) * 0.3;
+    for (const url of fresh) {
+      if (Date.now() > mediaDeadline) {
+        console.warn('[ingest] WP media: preostali novi PDF-ovi idući put.');
+        break;
+      }
+      await processUrl(url);
+    }
   }
 
   // HTML prolaz staje ranije (60% vremena) kako bi ostalo vremena za PDF-ove
