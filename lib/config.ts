@@ -242,6 +242,15 @@ export const config = {
   // stranica unutar vremenskog okvira (potpunije dnevno osvježavanje svih izvora).
   crawlDelayMs: int('CRAWL_DELAY_MS', 500),
   ingestMaxUrls: int('INGEST_MAX_URLS', 2100),
+  // WordPress sjedišta čiji REST API (/wp-json/wp/v2/media) daje popis NEDAVNO
+  // učitanih PDF-ova. Tako nove PDF-ove (natječaji, glasnici, plakati) nalazimo i kad
+  // se objava koja ih sadrži dugo ne dohvati ponovno (spora rotacija velikog korpusa).
+  wpMediaHosts: list('WP_MEDIA_HOSTS', [
+    'valpovo.hr', 'tz.valpovo.hr', 'ustanova.valpovo.hr',
+    'www.urbanizam-valpovo.hr', 'oskatancic.hr', 'crvenikrizvalpovo.hr',
+  ]),
+  // Koliko dana unatrag tražimo nove PDF-ove preko WordPress API-ja.
+  wpMediaDays: int('WP_MEDIA_DAYS', 90),
   // INGEST_FORCE=1 preskače provjeru svježine (obradi SVE stranice ovaj prolaz) —
   // korisno za jednokratno otkrivanje svih PDF poveznica bez čekanja da stranice "ostare".
   ingestForce: process.env.INGEST_FORCE === '1',

@@ -204,6 +204,45 @@ export async function mapSitemapTree(): Promise<SitemapNode[]> {
   return nodes;
 }
 
+/**
+ * PDF-ovi učitani na WordPress sjedišta u zadnjih `days` dana, prema REST API-ju
+ * (/wp-json/wp/v2/media?mime_type=application/pdf). Ne ovisi o tome je li objava
+ * s poveznicom nedavno dohvaćena. Greška pojedinog sjedišta se samo zabilježi.
+ */
+export async function discoverWpMediaPdfs(
+  hosts: string[] = config.wpMediaHosts,
+  days: number = config.wpMediaDays,
+): Promise<string[]> {
+  const after = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 19);
+  const out = new Set<string>();
+  for (const host of hosts) {
+    for (let page = 1; page <= 5; page++) {
+      const api =
+        `https://${host}/wp-json/wp/v2/media?mime_type=application/pdf&per_page=100` +
+        `&page=${page}&after=${after}&orderby=date&order=desc&_fields=source_url`;
+      try {
+        if (!isAllowedHost(api) || !(await isAllowedByRobots(api))) break;
+        const res = await fetch(api, {
+          headers: { 'User-Agent': CRAWLER_USER_AGENT, Accept: 'application/json' },
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!res.ok) break; // npr. 400 kad stranica premaši broj stranica
+        const items = (await res.json()) as { source_url?: string }[];
+        if (!Array.isArray(items) || items.length === 0) break;
+        for (const it of items) {
+          const u = it.source_url;
+          if (u && u.toLowerCase().endsWith('.pdf') && isAllowedHost(u)) out.add(normalizeUrl(u));
+        }
+        if (items.length < 100) break;
+      } catch (e) {
+        console.warn(`[ingest] WP media API nedostupan: ${host}`, e instanceof Error ? e.message : e);
+        break;
+      }
+    }
+  }
+  return [...out];
+}
+
 /** Dohvaća jedan resurs (HTML ili PDF) uz robots.txt provjeru i timeout. */
 export async function fetchResource(url: string): Promise<FetchedResource | null> {
   if (!isAllowedHost(url)) return null;
