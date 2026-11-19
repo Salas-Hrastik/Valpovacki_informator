@@ -36,11 +36,13 @@ const OCR_IMAGE_PROMPT =
  * ako dokument nema čitljivog teksta). Baca grešku ako poziv ne uspije —
  * pozivatelj to tretira kao neuspjeli dokument i nastavlja s ostalima.
  */
-export async function ocrPdf(buffer: Buffer, url: string): Promise<string> {
+export async function ocrPdf(buffer: Buffer, url: string, pages = 0): Promise<string> {
   const anthropic = new Anthropic(); // ANTHROPIC_API_KEY iz okoline (kao u rerank.ts)
-  const msg = await anthropic.messages.create({
+  // Dulji dokument → veći limit izlaza; streaming jer SDK odbija dugi ne-streaming poziv.
+  const maxTokens = pages > config.ocrMaxPages ? config.ocrMaxTokensLong : config.ocrMaxTokens;
+  const msg = await anthropic.messages.stream({
     model: config.ocrModel,
-    max_tokens: config.ocrMaxTokens,
+    max_tokens: maxTokens,
     messages: [
       {
         role: 'user',
@@ -57,7 +59,7 @@ export async function ocrPdf(buffer: Buffer, url: string): Promise<string> {
         ],
       },
     ],
-  });
+  }).finalMessage();
 
   const text = msg.content
     .map((b) => (b.type === 'text' ? b.text : ''))

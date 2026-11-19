@@ -59,7 +59,11 @@ export function extractFromHtml(html: string, url: string): ExtractedDocument {
   return { title, text, publishedAt: toIsoOrNull(publishedAt) };
 }
 
-export async function extractFromPdf(buffer: Buffer, url: string): Promise<ExtractedDocument> {
+export async function extractFromPdf(
+  buffer: Buffer,
+  url: string,
+  opts: { maxOcrPages?: number } = {},
+): Promise<ExtractedDocument> {
   // pdf-parse je sinkrono CPU-parsiranje BEZ vlastitog timeouta — pokvaren ili
   // golem PDF može vrtjeti unedogled i zaustaviti cijeli ingest. Ograničavamo ga
   // utrkom s timeoutom; ako istekne, baca se greška (URL ide u "neuspjele", run se
@@ -79,12 +83,13 @@ export async function extractFromPdf(buffer: Buffer, url: string): Promise<Extra
   // broja stranica i veličine, da trošak ostane zanemariv.
   if (config.ocrEnabled && text.length < config.ocrMinTextLen) {
     const pages = (data.numpages as number | undefined) ?? 0;
-    if (pages > config.ocrMaxPages) {
-      console.warn(`[ocr] preskačem ${url} — ${pages} str. > granica (${config.ocrMaxPages}).`);
+    const maxPages = opts.maxOcrPages ?? config.ocrMaxPages;
+    if (pages > maxPages) {
+      console.warn(`[ocr] preskačem ${url} — ${pages} str. > granica (${maxPages}).`);
     } else if (buffer.byteLength > config.ocrMaxBytes) {
       console.warn(`[ocr] preskačem ${url} — ${Math.round(buffer.byteLength / 1024 / 1024)} MB > granica.`);
     } else {
-      const ocrText = normalizeText(await ocrPdf(buffer, url));
+      const ocrText = normalizeText(await ocrPdf(buffer, url, pages));
       if (ocrText.length >= config.ocrMinTextLen) {
         return { title, text: ocrText, publishedAt, ocr: true };
       }

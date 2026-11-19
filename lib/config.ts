@@ -275,6 +275,10 @@ export const config = {
   ocrMaxPages: int('OCR_MAX_PAGES', 10),
   ocrMaxBytes: int('OCR_MAX_BYTES', 10 * 1024 * 1024),
   ocrMaxTokens: int('OCR_MAX_TOKENS', 4096),
+  // Dulji skenirani PDF-ovi (npr. nacrt pravilnika od 12 str.): OCR do ovoliko stranica
+  // kad u prolazu ima dovoljno vremena (vidi pipeline), uz veći limit izlaznih tokena.
+  ocrMaxPagesLong: int('OCR_MAX_PAGES_LONG', 25),
+  ocrMaxTokensLong: int('OCR_MAX_TOKENS_LONG', 16000),
   // OCR za SAMOSTALNE SLIKE (plakati/banneri, npr. datum Ljeta valpovačkog na
   // naslovnici). Otkrivaju se na HTML stranicama (extractImageLinks) i šalju
   // Claude visionu. Strogo ograničeno radi troška: filtar logotipa/ikona,

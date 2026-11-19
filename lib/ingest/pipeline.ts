@@ -48,6 +48,66 @@ function recencyScore(url: string, now: Date = new Date()): number {
   return year * 372 + month * 31 + day;
 }
 
+type Sb = ReturnType<typeof supabaseAdmin>;
+interface ChunkRow { chunk_index: number; text: string; tokens_est: number; embedding: number[]; norm: number }
+
+// Granice jedne serije pri spremanju: najviše isječaka i ukupnih znakova po pozivu
+// baze. Veliki dokumenti (Službeni glasnik ~450 isječaka, izvješća s dugim tablicama)
+// u jednom RPC-u premaše statement timeout; zato ih spremamo u serijama.
+const STORE_BATCH = 60;
+const STORE_BATCH_CHARS = 40_000;
+
+function storeBatches(chunks: ChunkRow[]): ChunkRow[][] {
+  const out: ChunkRow[][] = [];
+  let cur: ChunkRow[] = [];
+  let chars = 0;
+  for (const c of chunks) {
+    if (cur.length > 0 && (cur.length >= STORE_BATCH || chars + c.text.length > STORE_BATCH_CHARS)) {
+      out.push(cur);
+      cur = [];
+      chars = 0;
+    }
+    cur.push(c);
+    chars += c.text.length;
+  }
+  if (cur.length > 0) out.push(cur);
+  return out;
+}
+
+/**
+ * Sprema dokument i isječke. Mali dokument: jedan atomarni RPC (kao dosad).
+ * Veliki: RPC s prvom serijom (zamjenjuje stare isječke) uz privremeni hash, zatim
+ * ostale serije izravno u tablice, i tek na kraju pravi content_hash — ako se
+ * spremanje prekine, idući prolaz vidi drugi hash i dokument ponovno obradi.
+ */
+async function storeDocument(sb: Sb, doc: Record<string, string>, chunks: ChunkRow[]): Promise<void> {
+  const [first = [], ...rest] = storeBatches(chunks);
+  const big = rest.length > 0;
+  const { data: docId, error } = await sb.rpc('upsert_document_with_chunks', {
+    p_doc: big ? { ...doc, content_hash: `partial:${doc.content_hash}` } : doc,
+    p_chunks: first,
+  });
+  if (error) throw new Error(error.message);
+  if (!big) return;
+  for (const [n, batch] of rest.entries()) {
+    const { data: rows, error: e1 } = await sb
+      .from('dijelovi')
+      .insert(batch.map((c) => ({ document_id: docId, chunk_index: c.chunk_index, text: c.text, tokens_est: c.tokens_est })))
+      .select('id, chunk_index');
+    if (e1) throw new Error(`dijelovi (serija ${n + 2}): ${e1.message}`);
+    const byIndex = new Map(batch.map((c) => [c.chunk_index, c]));
+    const { error: e2 } = await sb.from('ugradnje').insert(
+      (rows ?? []).map((r) => {
+        const c = byIndex.get(r.chunk_index as number)!;
+        return { chunk_id: r.id, ugradnja: JSON.stringify(c.embedding), norm: c.norm };
+      }),
+    );
+    if (e2) throw new Error(`ugradnje (serija ${n + 2}): ${e2.message}`);
+  }
+  const { error: e3 } = await sb.from('dokumenti').update({ content_hash: doc.content_hash }).eq('id', docId);
+  if (e3) throw new Error(e3.message);
+}
+
 export interface IngestStats {
   totalUrls: number;
   processed: number;
@@ -208,7 +268,10 @@ export async function runIngest(
 
       const extracted =
         resource.contentType === 'pdf'
-          ? await extractFromPdf(resource.buffer!, url)
+          ? await extractFromPdf(resource.buffer!, url, {
+              // Dugi OCR (do ~2 min) samo kad do kraja prolaza ima dovoljno vremena.
+              maxOcrPages: deadline - Date.now() > 170_000 ? config.ocrMaxPagesLong : config.ocrMaxPages,
+            })
           : resource.contentType === 'image'
             ? await extractFromImage(resource.buffer!, resource.mediaType!, url)
             : extractFromHtml(resource.html!, url);
@@ -232,8 +295,9 @@ export async function runIngest(
       // kontekst naslova/događaja. Standardna RAG praksa za poboljšanje dohvata.
       const vectors = await embedTexts(chunks.map((c) => `${extracted.title}\n\n${c.text}`));
 
-      const { error } = await sb.rpc('upsert_document_with_chunks', {
-        p_doc: {
+      await storeDocument(
+        sb,
+        {
           url,
           title: extracted.title,
           source: new URL(url).hostname,
@@ -243,15 +307,14 @@ export async function runIngest(
           content_hash: hash,
           published_at: extracted.publishedAt ?? '',
         },
-        p_chunks: chunks.map((c, i) => ({
+        chunks.map((c, i) => ({
           chunk_index: c.chunk_index,
           text: c.text,
           tokens_est: c.tokens_est,
           embedding: vectors[i],
           norm: l2norm(vectors[i]),
         })),
-      });
-      if (error) throw new Error(error.message);
+      );
 
       if (previousHash === undefined) stats.inserted++;
       else stats.updated++;
