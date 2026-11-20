@@ -84,7 +84,9 @@ async function storeDocument(sb: Sb, doc: Record<string, string>, chunks: ChunkR
   const [first = [], ...rest] = storeBatches(chunks);
   const big = rest.length > 0;
   const { data: docId, error } = await sb.rpc('upsert_document_with_chunks', {
-    p_doc: big ? { ...doc, content_hash: `partial:${doc.content_hash}` } : doc,
+    // Veliki dokument: privremeni hash i BEZ otiska datoteke dok se ne spreme sve
+    // serije — inače bi prekinuto spremanje idući put izgledalo kao nepromijenjeno.
+    p_doc: big ? { ...doc, content_hash: `partial:${doc.content_hash}`, content_raw: '' } : doc,
     p_chunks: first,
   });
   if (error) throw new Error(error.message);
@@ -104,7 +106,7 @@ async function storeDocument(sb: Sb, doc: Record<string, string>, chunks: ChunkR
     );
     if (e2) throw new Error(`ugradnje (serija ${n + 2}): ${e2.message}`);
   }
-  const { error: e3 } = await sb.from('dokumenti').update({ content_hash: doc.content_hash }).eq('id', docId);
+  const { error: e3 } = await sb.from('dokumenti').update({ content_hash: doc.content_hash, content_raw: doc.content_raw ?? null }).eq('id', docId);
   if (e3) throw new Error(e3.message);
 }
 
@@ -168,16 +170,21 @@ export async function runIngest(
   );
 
   // Učitaj SVE postojeće dokumente u stranicama po 1000 (obilazi Supabase limit)
-  const existingMap = new Map<string, { hash: string; fetchedAt: string }>();
+  // fileHash: otisak sirove PDF datoteke (pohranjen u stupcu content_raw) — vidi processUrl.
+  const existingMap = new Map<string, { hash: string; fetchedAt: string; fileHash: string | null }>();
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await sb
       .from('dokumenti')
-      .select('url, content_hash, fetched_at')
+      .select('url, content_hash, fetched_at, content_raw')
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`Učitavanje postojećih dokumenata: ${error.message}`);
     if (!data || data.length === 0) break;
     for (const d of data) {
-      existingMap.set(d.url as string, { hash: d.content_hash as string, fetchedAt: d.fetched_at as string });
+      existingMap.set(d.url as string, {
+        hash: d.content_hash as string,
+        fetchedAt: d.fetched_at as string,
+        fileHash: (d.content_raw as string | null) ?? null,
+      });
     }
     if (data.length < PAGE) break;
   }
@@ -266,6 +273,20 @@ export async function runIngest(
         }
       }
 
+      // PDF čija se datoteka nije promijenila (isti otisak bajtova) ne obrađujemo
+      // ponovno: OCR skeniranog PDF-a svaki put vrati malo drugačiji tekst, pa bi se
+      // inače svakih 14 dana plaćali OCR i ugradnje za isti dokument.
+      const fileHash =
+        resource.contentType === 'pdf'
+          ? `sha256:${createHash('sha256').update(resource.buffer!).digest('hex')}`
+          : null;
+      if (fileHash && prev?.fileHash === fileHash && !prev.hash?.startsWith('partial:')) {
+        await sb.rpc('touch_document', { p_url: url });
+        stats.unchanged++;
+        stats.processed++;
+        return;
+      }
+
       const extracted =
         resource.contentType === 'pdf'
           ? await extractFromPdf(resource.buffer!, url, {
@@ -283,6 +304,10 @@ export async function runIngest(
 
       if (previousHash === hash) {
         await sb.rpc('touch_document', { p_url: url });
+        // Stari PDF bez otiska: zapiši ga, da idući put preskočimo i ekstrakciju.
+        if (fileHash && prev?.fileHash !== fileHash) {
+          await sb.from('dokumenti').update({ content_raw: fileHash }).eq('url', url);
+        }
         stats.unchanged++;
         stats.processed++;
         return;
@@ -306,6 +331,7 @@ export async function runIngest(
           content_text: extracted.text,
           content_hash: hash,
           published_at: extracted.publishedAt ?? '',
+          ...(fileHash ? { content_raw: fileHash } : {}),
         },
         chunks.map((c, i) => ({
           chunk_index: c.chunk_index,
