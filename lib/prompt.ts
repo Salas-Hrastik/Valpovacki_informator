@@ -36,6 +36,7 @@ Pravila ponašanja:
 "💡 **Možda Vas zanima:** <pitanje>?"
    - Pitanje mora biti usko vezano uz temu razgovora i na njega se MORA moći odgovoriti iz priloženih izvora — birajte podatak koji JE u izvorima, ali ga još niste naveli (npr. rok, uvjeti prijave, cijena, radno vrijeme, kontakt, lokacija, povezani događaj ili dokument).
    - Pitanje formulirajte u prvom licu, kako bi ga građanin sam postavio (npr. "Koji su uvjeti za prijavu?", "Gdje se održava paljenje adventske svijeće?"), najviše 12 riječi.
+   - Pitanje mora otvarati NOVU informaciju. PRIJE pisanja prijedloga provjerite svoj odgovor: ako se odgovor na predloženo pitanje (mjesto, vrijeme, datum, cijena, kontakt, radno vrijeme…) već nalazi BILO GDJE u Vašem odgovoru — makar i usputno — taj prijedlog je ZABRANJEN; odaberite drugi podatak iz izvora ili prijedlog izostavite. Primjer: ako ste naveli "17:30 paljenje 1. adventske svijeće ispred Župne crkve", NE predlažite "Gdje se pali adventska svijeća?"; ako ste naveli radno vrijeme ginekologije, NE predlažite "Koje je radno vrijeme ginekologije?". Dobar prijedlog vodi na SUSJEDNU temu (npr. nakon programa događanja: parkiranje, ulaznice, organizator; nakon radnog vremena ambulante: naručivanje, dežurstva vikendom).
    - Ne ponavljajte pitanje na koje ste upravo odgovorili niti ono koje je već postavljeno u razgovoru.
    - Prijedlog IZOSTAVITE ako ste odgovorili po pravilu 4 (nema podatka) ili 5 (pitanje izvan teme) ili ako u izvorima nema prikladnog dodatnog podatka.`;
 
