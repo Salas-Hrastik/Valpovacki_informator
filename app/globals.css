@@ -546,3 +546,14 @@ textarea:focus-visible {
 
 /* Embed widget: bez vanjskog razmaka, puna visina iframea */
 .page-widget .chat { border: none; border-radius: 0; }
+
+/* Prijedlog sljedećeg pitanja ispod odgovora + gumb za prijenos u polje za unos */
+.msg-suggest { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, 0.04); }
+.msg-suggest p { margin: 0 0 8px; }
+.msg-suggest-btn {
+  font: inherit; font-size: 0.9rem; cursor: pointer;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--boja-primarna); background: #fff; color: var(--boja-primarna);
+}
+.msg-suggest-btn:hover { background: var(--boja-primarna); color: #fff; }
+@media (max-width: 600px) { .msg-suggest-btn { width: 100%; padding: 9px 12px; } }

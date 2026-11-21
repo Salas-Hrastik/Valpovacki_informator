@@ -54,6 +54,14 @@ function formatDateHr(iso: string): string {
 const NO_EMBED =
   /^https?:\/\/((www\.|maps\.)?google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|([a-z0-9-]+\.)?(facebook|instagram|youtube|tiktok|x|twitter|linkedin)\.com|youtu\.be)/i;
 
+/** Redak "💡 **Možda Vas zanima:** …" s kraja odgovora → [tekst bez retka, pitanje]. */
+const SUGGEST_RE = /\n*[ \t]*💡\s*\**\s*Možda Vas zanima:?\s*\**:?\s*(.+?)\s*$/u;
+function splitSuggestion(text: string): [string, string | null] {
+  const m = text.match(SUGGEST_RE);
+  if (!m || m.index === undefined) return [text, null];
+  return [text.slice(0, m.index), m[1].replace(/\*+/g, '').trim()];
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -675,7 +683,12 @@ export default function Chat() {
               </span>
             )}
             <div className="msg-bubble">
-              {m.content ? (
+              {m.content ? (() => {
+                const streaming = busy && i === messages.length - 1;
+                const [body, suggestion] =
+                  m.role === 'assistant' ? splitSuggestion(m.content) : [m.content, null];
+                return (
+                <>
                 <div className="msg-text">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -692,10 +705,35 @@ export default function Chat() {
                       ),
                     }}
                   >
-                    {m.content}
+                    {suggestion && !streaming ? body : m.content}
                   </ReactMarkdown>
                 </div>
-              ) : busy && i === messages.length - 1 ? (
+                {suggestion && !streaming && (
+                  <div className="msg-suggest">
+                    <p>
+                      <span aria-hidden="true">💡 </span>
+                      <strong>Možda Vas zanima:</strong> {suggestion}
+                    </p>
+                    <button
+                      type="button"
+                      className="msg-suggest-btn"
+                      onClick={() => {
+                        setInput(suggestion);
+                        requestAnimationFrame(() => {
+                          const ta = taRef.current;
+                          if (!ta) return;
+                          autoGrow(ta);
+                          ta.focus();
+                        });
+                      }}
+                    >
+                      ↓ Prenesi u prostor za upit
+                    </button>
+                  </div>
+                )}
+                </>
+                );
+              })() : busy && i === messages.length - 1 ? (
                 <span className="typing" aria-label="Asistent piše odgovor" role="status">
                   <span></span>
                   <span></span>
