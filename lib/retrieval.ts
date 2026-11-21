@@ -166,6 +166,17 @@ export async function retrieve(
   await applyExtra(extras.svc, true);
   await applyExtra(extras.council, true);
 
+  // 3f) Tekuće izdanje manifestacije: pitanje bez godine ("Kada je paljenje prve
+  // adventske svijeće?") vektorski pogađa izvještaje PROŠLIH izdanja ("Advent u Valpovu
+  // 2025. – …") jer oni doslovno opisuju isto, a program tekuće godine ispadne. Ako su
+  // među kandidatima prošla izdanja neke serije, dovlačimo SVE isječke iste serije
+  // za tekuću (i iduću) godinu na početak.
+  try {
+    await applyExtra(fetchCurrentEditionChunks(sb, query, candidates, threshold), true);
+  } catch (e) {
+    console.error('[retrieval] dohvat tekućeg izdanja nije uspio:', e);
+  }
+
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
@@ -547,6 +558,80 @@ async function fetchRecentChunks(
     }
   }
   return out;
+}
+
+const foldHr = (s: string) =>
+  s.toLowerCase().replace(/[čć]/g, 'c').replace(/š/g, 's').replace(/ž/g, 'z').replace(/đ/g, 'd');
+
+/**
+ * Sezonske teme → serija manifestacije čije tekuće izdanje uvijek dohvaćamo. Riječi kao
+ * "jaslice" ili "doček" vektorski pogađaju posve druge dokumente (vrtići, škole), a
+ * nalaze se samo u programu Adventa.
+ */
+const SEASONAL_SERIES: { patterns: string[]; series: string }[] = [
+  {
+    patterns: [
+      'advent', 'božić', 'bozic', 'jaslic', 'djed mraz', 'djeda mraz', 'djed božićnjak', 'djeda božićnjak',
+      'sv. nikol', 'svetog nikol', 'sveti nikola', 'nikolin', 'lampion', 'klizal', 'doček', 'docek',
+      'nova godin', 'nove godine', 'novu godinu', 'novogodiš', 'novogodis', 'silvestr', 'vatromet', 'svijeć', 'svijec',
+    ],
+    series: 'advent u valpovu',
+  },
+];
+
+/** Tekuća godina u Hrvatskoj (Europe/Zagreb). */
+function currentYearHr(): number {
+  return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Zagreb', year: 'numeric' }).format(new Date()), 10);
+}
+
+/**
+ * Serije "naziv + godina" (npr. "Advent u Valpovu 2025.") među kandidatima koje se
+ * pojavljuju s PROŠLOM godinom → svi isječci dokumenata iste serije za tekuću/iduću
+ * godinu (naslov ili URL sadrži naziv serije i godinu) — i kad je neki nebitan isječak
+ * tekućeg izdanja već među kandidatima. Ništa ako pitanje navodi godinu.
+ */
+async function fetchCurrentEditionChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  query: string,
+  candidates: RetrievedChunk[],
+  score: number,
+): Promise<RetrievedChunk[]> {
+  if (/\b(19|20)\d{2}\b/.test(query)) return [];
+  const year = currentYearHr();
+  const q = query.toLowerCase();
+  const seasonal = SEASONAL_SERIES.filter((t) => t.patterns.some((p) => q.includes(p))).map((t) => t.series);
+  const series = new Map<string, { old: number }>();
+  for (const c of candidates) {
+    const m = (c.title || '').match(/^\s*(.{4,60}?)\s+((?:19|20)\d{2})\b/u);
+    if (!m) continue;
+    const name = m[1].replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (name.split(' ').filter((w) => w.length >= 3).length === 0) continue;
+    const prev = series.get(name) ?? { old: 0 };
+    series.set(name, { old: prev.old + (parseInt(m[2], 10) < year ? 1 : 0) });
+  }
+  const stale = [...series.entries()]
+    .filter(([, v]) => v.old > 0)
+    .sort((a, b) => b[1].old - a[1].old)
+    .slice(0, 2)
+    .map(([name]) => name);
+  for (const name of seasonal) if (!stale.includes(name)) stale.unshift(name);
+  if (stale.length === 0) return [];
+
+  const urls = new Set<string>();
+  for (const name of stale) {
+    const slug = foldHr(name).replace(/ /g, '-');
+    for (const y of [year, year + 1]) {
+      const [byTitle, byUrl] = await Promise.all([
+        sb.from('dokumenti').select('url').ilike('title', `%${name}%${y}%`).limit(4),
+        sb.from('dokumenti').select('url').ilike('url', `%${slug}%${y}%`).limit(4),
+      ]);
+      for (const r of [...(byTitle.data ?? []), ...(byUrl.data ?? [])] as { url: string }[]) urls.add(r.url);
+    }
+  }
+  if (urls.size === 0) return [];
+  // Svi isječci (do 12): program je dug, a traženi dan (npr. lampionada u prosincu)
+  // zna biti duboko u dokumentu — pravi isječak bira reranker.
+  return fetchChunksByUrls(sb, [...urls].slice(0, 4), 12, score);
 }
 
 /** Jedinstveni popis izvora (za prikaz citata ispod odgovora). */
