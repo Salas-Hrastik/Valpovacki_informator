@@ -86,6 +86,9 @@ export async function retrieve(
     svc: serviceUrls.length > 0
       ? start('dohvat lokalnih usluga', () => fetchChunksByUrls(sb, serviceUrls, 6, threshold))
       : null,
+    programs: isEventQuery(query)
+      ? start('dohvat aktualnih programa manifestacija', () => fetchActiveProgramChunks(sb, threshold))
+      : null,
     council: isCouncilQuery(query)
       ? start('dohvat sjednica Gradskog vijeća', () => fetchLatestCouncilChunks(sb, 3, 4, threshold))
       : null,
@@ -165,6 +168,7 @@ export async function retrieve(
   await applyExtra(extras.zupa, true);
   await applyExtra(extras.svc, true);
   await applyExtra(extras.council, true);
+  await applyExtra(extras.programs, true);
 
   // 3f) Tekuće izdanje manifestacije: pitanje bez godine ("Kada je paljenje prve
   // adventske svijeće?") vektorski pogađa izvještaje PROŠLIH izdanja ("Advent u Valpovu
@@ -578,6 +582,61 @@ const SEASONAL_SERIES: { patterns: string[]; series: string }[] = [
     series: 'advent u valpovu',
   },
 ];
+
+// Upiti o DOGAĐANJIMA (koncert, predstava, izložba…): uz vektorske rezultate dovlačimo
+// programe manifestacija koje su u tijeku ili uskoro počinju (npr. Advent), jer vektor
+// inače pogađa pojedinačne, često već održane događaje.
+const EVENT_PATTERNS = [
+  'koncert', 'predstav', 'izložb', 'izlozb', 'radionic', 'nastup', 'priredb', 'kino', 'film',
+  'festival', 'sajam', 'svirk', 'događ', 'dogad', 'manifestac', 'zabav', 'kazališ', 'kazalis',
+  'predavanj', 'tribin', 'za djecu', 'što se događa', 'sto se dogada', 'izlaz', 'program',
+];
+// …ali samo kad pitanje traži VRIJEME (kada, uskoro, sljedeći…); "Koje događaje
+// organizira ustanova?" ostaje vektorskim izvorima ustanove.
+const WHEN_PATTERNS = [
+  'kada', 'kad ', 'kad?', 'uskoro', 'sljedeć', 'sljedec', 'idući', 'iduci', 'nadolaz', 'predstojeć',
+  'predstojec', 'ima li', 'imali', 'danas', 'sutra', 'vikend', 'ovaj tjedan', 'ovog tjedna',
+  'ovaj mjesec', 'ovog mjeseca', 'studen', 'prosin', 'siječ', 'sijec', 'što se događa', 'sto se dogada',
+  'gdje mogu', 'kamo', 'u koliko sati',
+];
+function isEventQuery(query: string): boolean {
+  const q = ` ${query.toLowerCase()} `;
+  return EVENT_PATTERNS.some((p) => q.includes(p)) && WHEN_PATTERNS.some((p) => q.includes(p));
+}
+
+const PROGRAM_RANGE_RE =
+  /\((\d{1,2})\.\s*(\d{1,2})\.\s*((?:19|20)\d{2})\.?\s*[–—-]\s*(\d{1,2})\.\s*(\d{1,2})\.\s*((?:19|20)\d{2})\.?\)/;
+
+/**
+ * Programi manifestacija s rasponom datuma u naslovu ("… (28.11.2026. – 01.01.2027.)")
+ * koji su u tijeku ili počinju u idućih 45 dana → svi isječci (do 12), najviše 3 programa.
+ */
+async function fetchActiveProgramChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const year = currentYearHr();
+  const { data } = await sb
+    .from('dokumenti')
+    .select('url, title')
+    .ilike('title', '%(%.%.%)%')
+    .or(`title.ilike.%${year}%,title.ilike.%${year + 1}%`)
+    .limit(100);
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Zagreb' }));
+  today.setHours(0, 0, 0, 0);
+  const horizon = today.getTime() + 45 * 24 * 60 * 60 * 1000;
+  const active: { url: string; start: number }[] = [];
+  for (const d of (data ?? []) as { url: string; title: string }[]) {
+    const m = d.title.match(PROGRAM_RANGE_RE);
+    if (!m) continue;
+    const start = new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+    const end = new Date(+m[6], +m[5] - 1, +m[4]).getTime();
+    if (end >= today.getTime() && start <= horizon) active.push({ url: d.url, start });
+  }
+  if (active.length === 0) return [];
+  active.sort((a, b) => a.start - b.start);
+  return fetchChunksByUrls(sb, [...new Set(active.map((a) => a.url))].slice(0, 3), 12, score);
+}
 
 /** Tekuća godina u Hrvatskoj (Europe/Zagreb). */
 function currentYearHr(): number {

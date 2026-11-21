@@ -130,5 +130,9 @@
   {
     "question": "Kada su žive jaslice?",
     "expected_urls": ["advent-u-valpovu-2026", "AUV-2026"]
+  },
+  {
+    "question": "Kada je koncert u kapelici dvorca?",
+    "expected_urls": ["advent-u-valpovu-2026", "AUV-2026"]
   }
 ]
