@@ -122,5 +122,13 @@
   {
     "question": "curi mi bojler, tko to može popraviti?",
     "expected_urls": ["pretrazivac-obrta.gov.hr/#elektro_vodo"]
+  },
+  {
+    "question": "Kada je paljenje prve adventske svijeće?",
+    "expected_urls": ["advent-u-valpovu-2026", "AUV-2026"]
+  },
+  {
+    "question": "Kada su žive jaslice?",
+    "expected_urls": ["advent-u-valpovu-2026", "AUV-2026"]
   }
 ]
