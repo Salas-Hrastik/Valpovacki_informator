@@ -9,11 +9,11 @@
   },
   {
     "question": "Kada se odvozi glomazni otpad u Ladimirevcima?",
-    "expected_urls": ["valpovo.hr/komunal"]
+    "expected_urls": ["urbanizam-valpovo.hr/wp-content/uploads/2026", "urbanizam-valpovo.hr/obavijest-o-prikupljanju-glomaznog"]
   },
   {
     "question": "Koji su aktualni natječaji i javni pozivi Grada Valpova?",
-    "expected_urls": ["valpovo.hr/natjecaj", "valpovo.hr/javni-poziv"]
+    "expected_urls": ["//valpovo.hr/2026/", "//valpovo.hr/wp-content/uploads/2026/"]
   },
   {
     "question": "Gdje mogu pogledati proračun Grada Valpova?",

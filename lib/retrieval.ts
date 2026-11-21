@@ -89,6 +89,9 @@ export async function retrieve(
     programs: isEventQuery(query)
       ? start('dohvat aktualnih programa manifestacija', () => fetchActiveProgramChunks(sb, threshold))
       : null,
+    otpad: isOtpadQuery(query)
+      ? start('dohvat rasporeda odvoza otpada', () => fetchOtpadChunks(sb, query, threshold))
+      : null,
     council: isCouncilQuery(query)
       ? start('dohvat sjednica Gradskog vijeća', () => fetchLatestCouncilChunks(sb, 3, 4, threshold))
       : null,
@@ -169,6 +172,7 @@ export async function retrieve(
   await applyExtra(extras.svc, true);
   await applyExtra(extras.council, true);
   await applyExtra(extras.programs, true);
+  await applyExtra(extras.otpad, true);
 
   // 3f) Tekuće izdanje manifestacije: pitanje bez godine ("Kada je paljenje prve
   // adventske svijeće?") vektorski pogađa izvještaje PROŠLIH izdanja ("Advent u Valpovu
@@ -435,6 +439,12 @@ const SERVICE_TOPICS: { patterns: string[]; keys: string[]; urls?: string[]; obr
   { patterns: ['vrtlar', ' vrt ', ' vrta ', ' vrtu ', 'košnj', 'kosnj', 'kositi', 'travnjak', 'trava', 'drveć', 'drvec', 'orezivanj', 'okoliš', 'okolis', 'poljopriv'], keys: [], obrti: ['poljoprivreda_vrtlarstvo_i_sumarstvo'] },
   { patterns: ['torte', 'torta', 'kolač', 'kolac', 'slastic', 'mesnic', 'mesar', 'pekarn', 'kruh', ' med ', 'meda '], keys: [], obrti: ['proizvodnja_i_prodaja_hrane_pekare_mesnice_slastice'] },
   { patterns: ['ribolov', 'pecanj', 'pecati'], keys: ['priroda.ribolov'] },
+  // Pravo na pristup informacijama — stranica Grada s kontaktom službenika (inače
+  // vektor bira istoimene stranice škola i ustanova ili sam tekst zakona).
+  { patterns: ['pristup informacij', 'pristupa informacij', 'pravo na pristup', 'službenik za informiranje', 'sluzbenik za informiranje', 'ponovnu uporabu informacij', 'ponovna uporaba informacij'], keys: [], urls: ['https://valpovo.hr/pristup-informacijama/'] },
+  // Upis u vrtić — gradski DV Maza pokrivaju odluke u glasnicima (vektor), a privatni
+  // DV Moj Bambi ima zasebnu stranicu upisa.
+  { patterns: ['vrtić', 'vrtic', 'upis djeteta', 'upisati dijete', 'predškol', 'predskol'], keys: [], urls: ['https://mojbambi.hr/upisi/'] },
 ];
 
 /** URL-ovi dokumenata koje treba ubaciti za upit o lokalnim uslugama (bez duplikata). */
@@ -636,6 +646,36 @@ async function fetchActiveProgramChunks(
   if (active.length === 0) return [];
   active.sort((a, b) => a.start - b.start);
   return fetchChunksByUrls(sb, [...new Set(active.map((a) => a.url))].slice(0, 3), 12, score);
+}
+
+// Odvoz otpada (glomazni, raspored po naseljima): aktualni raspored Urbanizma za
+// tekuću godinu (PDF-ovi po polugodištima) + obavijesti o glomaznom otpadu.
+const OTPAD_PATTERNS = ['glomazn', 'odvoz', 'smeć', 'smec', 'otpad', 'reciklaž', 'reciklaz', 'kontejner', 'kanta za'];
+function isOtpadQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return OTPAD_PATTERNS.some((p) => q.includes(p));
+}
+
+async function fetchOtpadChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  query: string,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const year = currentYearHr();
+  const [sched, bulky] = await Promise.all([
+    sb.from('dokumenti').select('url').ilike('url', `%urbanizam-valpovo.hr%aspored-odvoza%${year}%`)
+      .not('url', 'ilike', '%koska%').order('url', { ascending: false }).limit(3),
+    // Obavijesti o glomaznom otpadu (način prijave, telefon) — samo za pitanja o glomaznom.
+    query.toLowerCase().includes('glomazn')
+      ? sb.from('dokumenti').select('url').ilike('url', '%urbanizam-valpovo.hr%glomazn%')
+          .order('published_at', { ascending: false, nullsFirst: false }).limit(2)
+      : Promise.resolve({ data: [] as { url: string }[] }),
+  ]);
+  const urls = (r: { data: unknown }) => ((r.data ?? []) as { url: string }[]).map((d) => d.url);
+  return [
+    ...(await fetchChunksByUrls(sb, urls(bulky), 2, score)),
+    ...(await fetchChunksByUrls(sb, urls(sched), 4, score)),
+  ];
 }
 
 /** Tekuća godina u Hrvatskoj (Europe/Zagreb). */
