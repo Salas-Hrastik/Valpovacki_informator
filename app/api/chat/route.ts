@@ -15,6 +15,7 @@ import { config } from '@/lib/config';
 import { SYSTEM_PROMPT_HR, buildUserPrompt } from '@/lib/prompt';
 import { retrieve, uniqueSources } from '@/lib/retrieval';
 import { supabaseAdmin } from '@/lib/supabase';
+import { suggestionText, verifySuggestion } from '@/lib/suggestion';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -112,12 +113,47 @@ export async function POST(req: Request): Promise<Response> {
     const readable = new ReadableStream<Uint8Array>({
       async start(controller) {
         let answer = '';
+        // Redak prijedloga ("💡 Možda Vas zanima") zadržavamo dok ne provjerimo da
+        // na predloženo pitanje postoji odgovor u izvorima (lib/suggestion.ts).
+        let emitted = 0;
+        let held = false;
+        const flush = (end: number) => {
+          if (end > emitted) {
+            controller.enqueue(sse({ type: 'delta', text: answer.slice(emitted, end) }));
+            emitted = end;
+          }
+        };
         try {
           for await (const event of stream) {
             if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
               answer += event.delta.text;
-              controller.enqueue(sse({ type: 'delta', text: event.delta.text }));
+              if (held) continue;
+              const i = answer.indexOf('💡');
+              if (i >= 0) {
+                held = true;
+                flush(i);
+              } else {
+                // ne cijepamo surogatni par (emoji) između dvije poruke
+                flush(/[\uD800-\uDBFF]$/.test(answer) ? answer.length - 1 : answer.length);
+              }
             }
+          }
+          if (held) {
+            const nl = answer.indexOf('\n', emitted);
+            const lineEnd = nl === -1 ? answer.length : nl;
+            const line = answer.slice(emitted, lineEnd);
+            const rest = answer.slice(lineEnd);
+            const body = answer.slice(0, emitted);
+            if (await verifySuggestion(suggestionText(line), body)) {
+              flush(answer.length);
+            } else {
+              // prijedlog izbacujemo; eventualni tekst iza njega ipak šaljemo
+              answer = body.trimEnd() + rest;
+              emitted = body.trimEnd().length;
+              flush(answer.length);
+            }
+          } else {
+            flush(answer.length);
           }
           const final = await stream.finalMessage();
           // Model je odbio odgovoriti (sigurnosni filtar) → bez teksta bi ostao prazan oblačić.
