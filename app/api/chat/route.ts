@@ -15,6 +15,7 @@ import { config } from '@/lib/config';
 import { SYSTEM_PROMPT_HR, buildUserPrompt } from '@/lib/prompt';
 import { retrieve, uniqueSources } from '@/lib/retrieval';
 import { supabaseAdmin } from '@/lib/supabase';
+import { suggestionText, verifySuggestion } from '@/lib/suggestion';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -86,7 +87,7 @@ export async function POST(req: Request): Promise<Response> {
     const history = messages.slice(0, -1).slice(-MAX_HISTORY_TURNS);
     const claudeMessages: Anthropic.MessageParam[] = [
       ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user' as const, content: buildUserPrompt(question, chunks, weatherLine) },
+      { role: 'user' as const, content: buildUserPrompt(question, chunks, weatherLine, alreadyAsked(messages)) },
     ];
 
     // 3) Streaming odgovor (Messages API)
@@ -112,12 +113,47 @@ export async function POST(req: Request): Promise<Response> {
     const readable = new ReadableStream<Uint8Array>({
       async start(controller) {
         let answer = '';
+        // Redak prijedloga ("💡 Možda Vas zanima") zadržavamo dok ne provjerimo da
+        // na predloženo pitanje postoji odgovor u izvorima (lib/suggestion.ts).
+        let emitted = 0;
+        let held = false;
+        const flush = (end: number) => {
+          if (end > emitted) {
+            controller.enqueue(sse({ type: 'delta', text: answer.slice(emitted, end) }));
+            emitted = end;
+          }
+        };
         try {
           for await (const event of stream) {
             if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
               answer += event.delta.text;
-              controller.enqueue(sse({ type: 'delta', text: event.delta.text }));
+              if (held) continue;
+              const i = answer.indexOf('💡');
+              if (i >= 0) {
+                held = true;
+                flush(i);
+              } else {
+                // ne cijepamo surogatni par (emoji) između dvije poruke
+                flush(/[\uD800-\uDBFF]$/.test(answer) ? answer.length - 1 : answer.length);
+              }
             }
+          }
+          if (held) {
+            const nl = answer.indexOf('\n', emitted);
+            const lineEnd = nl === -1 ? answer.length : nl;
+            const line = answer.slice(emitted, lineEnd);
+            const rest = answer.slice(lineEnd);
+            const body = answer.slice(0, emitted);
+            if (await verifySuggestion(suggestionText(line), body)) {
+              flush(answer.length);
+            } else {
+              // prijedlog izbacujemo; eventualni tekst iza njega ipak šaljemo
+              answer = body.trimEnd() + rest;
+              emitted = body.trimEnd().length;
+              flush(answer.length);
+            }
+          } else {
+            flush(answer.length);
           }
           const final = await stream.finalMessage();
           // Model je odbio odgovoriti (sigurnosni filtar) → bez teksta bi ostao prazan oblačić.
@@ -165,6 +201,24 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 // --- Pomoćne funkcije -----------------------------------------------------------
+
+const SUGGESTION_RE = /💡\s*\**\s*Možda Vas zanima:?\s*\**:?\s*(.+?)\s*$/mu;
+
+/** Pitanja koja su se već pojavila u razgovoru: sva korisnička pitanja (uključujući
+ *  zadnje) i prijedlozi "Možda Vas zanima" iz prethodnih odgovora (cijeli razgovor,
+ *  ne samo povijest poslana modelu). Služi da prijedlog ne ponovi već postavljeno. */
+function alreadyAsked(messages: ChatMessage[]): string[] {
+  const out: string[] = [];
+  for (const m of messages) {
+    if (m.role === 'user') {
+      out.push(m.content.trim().replace(/\s+/g, ' ').slice(0, 200));
+    } else {
+      const s = m.content.match(SUGGESTION_RE)?.[1];
+      if (s) out.push(s.replace(/\*+/g, '').trim().slice(0, 200));
+    }
+  }
+  return [...new Set(out)].slice(-20);
+}
 
 /** Razlučuje uzrok pogreške tijekom streama u razumljivu poruku za građanina.
  *  Generičku granu prati tehnička šifra (HTTP status) radi lakše dijagnostike. */
