@@ -141,17 +141,18 @@ export async function POST(req: Request): Promise<Response> {
           if (held) {
             const nl = answer.indexOf('\n', emitted);
             const lineEnd = nl === -1 ? answer.length : nl;
-            const line = answer.slice(emitted, lineEnd);
-            const rest = answer.slice(lineEnd);
-            const body = answer.slice(0, emitted);
-            if (await verifySuggestion(suggestionText(line), body)) {
-              flush(answer.length);
-            } else {
-              // prijedlog izbacujemo; eventualni tekst iza njega ipak šaljemo
-              answer = body.trimEnd() + rest;
-              emitted = body.trimEnd().length;
-              flush(answer.length);
-            }
+            const line = answer.slice(emitted, lineEnd).trim();
+            // Tekst iza prijedloga (npr. poveznica na izvor) — šaljemo ga uvijek.
+            const rest = answer.slice(lineEnd).trim();
+            const body = answer.slice(0, emitted); // već poslano klijentu
+            const ok = await verifySuggestion(suggestionText(line), body);
+            // Prijedlog uvijek ide na SAM KRAJ odgovora: Chat.tsx ga prepoznaje
+            // (okvir + gumb "Prenesi u prostor za upit") samo kao posljednji redak.
+            const sep = (t: string) => (t.endsWith('\n\n') ? '' : t.endsWith('\n') ? '\n' : '\n\n');
+            let tail = rest ? sep(body) + rest : '';
+            if (ok) tail += sep(body + tail) + line;
+            answer = body + tail;
+            flush(answer.length);
           } else {
             flush(answer.length);
           }
