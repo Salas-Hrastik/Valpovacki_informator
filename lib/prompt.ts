@@ -39,14 +39,21 @@ Pravila ponašanja:
    - Pitanje mora biti usko vezano uz temu razgovora i na njega se MORA moći odgovoriti iz priloženih izvora — birajte podatak koji JE u izvorima, ali ga još niste naveli (npr. rok, uvjeti prijave, cijena, radno vrijeme, kontakt, lokacija, povezani događaj ili dokument).
    - Pitanje formulirajte u prvom licu, kako bi ga građanin sam postavio (npr. "Koji su uvjeti za prijavu?", "Gdje se održava paljenje adventske svijeće?"), najviše 12 riječi.
    - Pitanje mora otvarati NOVU informaciju. PRIJE pisanja prijedloga provjerite svoj odgovor: ako se odgovor na predloženo pitanje (mjesto, vrijeme, datum, cijena, kontakt, radno vrijeme…) već nalazi BILO GDJE u Vašem odgovoru — makar i usputno — taj prijedlog je ZABRANJEN; odaberite drugi podatak iz izvora ili prijedlog izostavite. Primjer: ako ste naveli "17:30 paljenje 1. adventske svijeće ispred Župne crkve", NE predlažite "Gdje se pali adventska svijeća?"; ako ste naveli radno vrijeme ginekologije, NE predlažite "Koje je radno vrijeme ginekologije?". Dobar prijedlog vodi na SUSJEDNU temu (npr. nakon programa događanja: parkiranje, ulaznice, organizator; nakon radnog vremena ambulante: naručivanje, dežurstva vikendom).
-   - Ne ponavljajte pitanje na koje ste upravo odgovorili niti ono koje je već postavljeno u razgovoru.
-   - Prijedlog IZOSTAVITE ako ste odgovorili po pravilu 4 (nema podatka) ili 5 (pitanje izvan teme) ili ako u izvorima nema prikladnog dodatnog podatka.`;
+   - Ne ponavljajte pitanje na koje ste upravo odgovorili niti ono koje je već postavljeno u razgovoru. Ako korisnička poruka sadrži blok <vec_postavljeno>, prijedlog NE SMIJE biti ni jedno od tamo navedenih pitanja ni pitanje istog smisla drugim riječima (npr. "Koji su uvjeti za posudbu pomagala?" i "Tko može posuditi pomagala?" su isto pitanje).
+   - Pitanje mora biti razumljivo samo za sebe, bez prethodnog razgovora: imenujte ustanovu, uslugu ili događaj (npr. "Koje radno vrijeme ima posudionica Crvenog križa?", ne "Koje je radno vrijeme?").
+   - Ne predlažite pitanja o trenutačnom stanju, broju, zalihama ili dostupnosti (npr. "Koliko pomagala se trenutno može posuditi?") osim ako je taj podatak izričito naveden u izvorima.
+   - Prijedlog IZOSTAVITE ako ste odgovorili po pravilu 4 (nema podatka) ili 5 (pitanje izvan teme), ako u odgovoru navodite da traženi podatak nemate, ili ako u izvorima nema prikladnog dodatnog podatka.`;
 
 /**
  * Sastavlja korisničku poruku s kontekstom (izvorima) i pitanjem.
  * Datum "provjereno" preuzima se iz dokumenti.fetched_at.
  */
-export function buildUserPrompt(question: string, chunks: RetrievedChunk[], weatherLine?: string): string {
+export function buildUserPrompt(
+  question: string,
+  chunks: RetrievedChunk[],
+  weatherLine?: string,
+  alreadyAsked: string[] = [],
+): string {
   const sources = chunks
     .map((c, i) => {
       const datum = formatDateHr(c.fetched_at);
@@ -58,7 +65,12 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[], weat
     ? `Današnji datum: ${todayHrLong()}\n${weatherLine}`
     : `Današnji datum: ${todayHrLong()}`;
 
-  return `${header}\n\n<izvori>\n${sources || '(nema pronađenih izvora)'}\n</izvori>\n\nPitanje građanina: ${question}`;
+  // Pitanja i prijedlozi koji su se već pojavili u razgovoru — prijedlog (pravilo 16) ih ne smije ponoviti.
+  const asked = alreadyAsked.length
+    ? `\n\n<vec_postavljeno>\n${alreadyAsked.map((q) => `- ${q}`).join('\n')}\n</vec_postavljeno>`
+    : '';
+
+  return `${header}\n\n<izvori>\n${sources || '(nema pronađenih izvora)'}\n</izvori>${asked}\n\nPitanje građanina: ${question}`;
 }
 
 /** Današnji datum S DANOM U TJEDNU (Europe/Zagreb): "ponedjeljak, 29.06.2026.".

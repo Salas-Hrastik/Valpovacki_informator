@@ -86,7 +86,7 @@ export async function POST(req: Request): Promise<Response> {
     const history = messages.slice(0, -1).slice(-MAX_HISTORY_TURNS);
     const claudeMessages: Anthropic.MessageParam[] = [
       ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user' as const, content: buildUserPrompt(question, chunks, weatherLine) },
+      { role: 'user' as const, content: buildUserPrompt(question, chunks, weatherLine, alreadyAsked(messages)) },
     ];
 
     // 3) Streaming odgovor (Messages API)
@@ -165,6 +165,24 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 // --- Pomoćne funkcije -----------------------------------------------------------
+
+const SUGGESTION_RE = /💡\s*\**\s*Možda Vas zanima:?\s*\**:?\s*(.+?)\s*$/mu;
+
+/** Pitanja koja su se već pojavila u razgovoru: sva korisnička pitanja (uključujući
+ *  zadnje) i prijedlozi "Možda Vas zanima" iz prethodnih odgovora (cijeli razgovor,
+ *  ne samo povijest poslana modelu). Služi da prijedlog ne ponovi već postavljeno. */
+function alreadyAsked(messages: ChatMessage[]): string[] {
+  const out: string[] = [];
+  for (const m of messages) {
+    if (m.role === 'user') {
+      out.push(m.content.trim().replace(/\s+/g, ' ').slice(0, 200));
+    } else {
+      const s = m.content.match(SUGGESTION_RE)?.[1];
+      if (s) out.push(s.replace(/\*+/g, '').trim().slice(0, 200));
+    }
+  }
+  return [...new Set(out)].slice(-20);
+}
 
 /** Razlučuje uzrok pogreške tijekom streama u razumljivu poruku za građanina.
  *  Generičku granu prati tehnička šifra (HTTP status) radi lakše dijagnostike. */
