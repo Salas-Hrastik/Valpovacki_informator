@@ -163,7 +163,9 @@ async function prune(apply: boolean): Promise<void> {
     (d) =>
       !corpus.has(d.url) &&
       !d.url.toLowerCase().endsWith('.pdf') &&
-      !importBases.some((b) => d.url.startsWith(`${b}#`)),
+      !importBases.some((b) => d.url.startsWith(`${b}#`)) &&
+      // valpovstina.info sinkronizira lib/ingest/valpovstina.ts (briše istekle objave)
+      !d.url.startsWith('https://valpovstina.info/'),
   );
   const stale = staleRows.map((d) => d.url);
   console.log(`[prune] U bazi: ${existing.length} | zadržati: ${existing.length - stale.length} | za brisanje: ${stale.length}\n`);

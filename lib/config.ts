@@ -51,6 +51,9 @@ const ALLOWED_HOSTS_DEFAULT = [
   // Obrtni registar — popis obrta uvezen iz službene datoteke (import:obrti).
   // NE crawla se (nije u sitemapovima ni seedovima; stranica blokira automatski pristup).
   'pretrazivac-obrta.gov.hr',
+  // valpovstina.info — NESLUŽBENI regionalni portal, SEKUNDARNI izvor: samo aktualne
+  // objave o Valpovu (lib/ingest/valpovstina.ts, dnevno). Ne crawla se.
+  'valpovstina.info',
 ];
 
 // Sitemapovi (nove ustanove prve, valpovo zadnji). Nepostojeći se preskaču.

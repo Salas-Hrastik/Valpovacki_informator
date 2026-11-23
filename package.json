@@ -12,6 +12,7 @@
     "ingest": "tsx scripts/ingest.ts",
     "import:turizam": "tsx scripts/import-turizam.ts",
     "import:obrti": "tsx scripts/import-obrti.ts",
+    "import:valpovstina": "tsx scripts/import-valpovstina.ts",
     "ocr:check": "tsx scripts/ocr-check.ts",
     "ocr:report": "tsx scripts/ocr-report.ts",
     "rag:debug": "tsx scripts/retrieve-debug.ts",
