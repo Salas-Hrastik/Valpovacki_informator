@@ -80,8 +80,10 @@ export async function retrieve(
     cjenik: isCjenikOtpadaQuery(query)
       ? start('dohvat cjenika otpada', () => chunksByUrlPattern('%urbanizam-valpovo.hr%cjenik%', 4))
       : null,
+    // Župa Valpovo: stranica „Župni ured" (raspored misa, kontakt, radno vrijeme) i
+    // naslovnica — ciljano, ne nasumičnih 5 od ~30 župnih stranica.
     zupa: isZupaQuery(query)
-      ? start('dohvat župnih stranica', () => chunksByUrlPattern('%zupavalpo.wixsite.com%', 4))
+      ? start('dohvat župnih stranica', () => fetchChunksByUrls(sb, ZUPA_VALPOVO_URLS, 4, threshold))
       : null,
     svc: serviceUrls.length > 0
       ? start('dohvat lokalnih usluga', () => fetchChunksByUrls(sb, serviceUrls, 6, threshold))
@@ -187,6 +189,14 @@ export async function retrieve(
     await applyExtra(fetchCurrentEditionChunks(sb, query, candidates, threshold), true);
   } catch (e) {
     console.error('[retrieval] dohvat tekućeg izdanja nije uspio:', e);
+  }
+
+  // 3h) Župa Harkanovci (Harkanovci, Ivanovci, Zelčin) ima ručno unesen dokument pod
+  // adresom valpovačke župe (#zupa-harkanovci). Bez spomena tih mjesta model je njezine
+  // podatke (Facebook, mise) pripisivao župi Valpovo — tada ga ne šaljemo.
+  if (!HARKANOVCI_RE.test(query)) {
+    const kept = candidates.filter((c) => !c.url.includes('#zupa-harkanovci'));
+    candidates.splice(0, candidates.length, ...kept);
   }
 
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
@@ -341,6 +351,12 @@ const ZUPA_PATTERNS = [
   'sveti tjedan', 'uskrs', 'blagdan', 'advent', 'božić', 'bozic',
   'župa valpovo', 'zupa valpovo',
 ];
+const ZUPA_VALPOVO_URLS = [
+  'https://zupavalpo.wixsite.com/zupa-valpovo/%C5%BEupni-ured',
+  'https://zupavalpo.wixsite.com/zupa-valpovo',
+];
+const HARKANOVCI_RE = /harkanov|ivanov|zelčin|zelcin|snježn|snjezn/i;
+
 function isZupaQuery(query: string): boolean {
   const q = query.toLowerCase();
   return ZUPA_PATTERNS.some((p) => q.includes(p));
