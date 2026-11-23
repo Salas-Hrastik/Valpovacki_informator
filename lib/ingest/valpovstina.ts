@@ -27,6 +27,17 @@ const FUTURE_DAYS = 90;
 /** Objava se mora odnositi na Valpovo ili naselja Grada Valpova. */
 const VALPOVO_RE = /valpov|ladimirev|\bnard|\bšag\b|\bsag\b|harkanov|ivanovc|zelčin|zelcin|marjanč|marjanc/i;
 
+// Objava koja nabraja i druga mjesta (npr. prekidi struje po Belišću, Petrijevcima…):
+// zadržavamo uvod i samo dijelove o Valpovu i naseljima — inače ih model nabraja.
+const DRUGA_MJESTA_RE = /beliš|petrijev|bizov|brođan|brodjan|bocanjev|\bgat\b|tiborjan|habjanov|satnic|koška|koska|donji miholjac|osijek/i;
+export function samoValpovo(text: string): string {
+  if (!DRUGA_MJESTA_RE.test(text)) return text;
+  const parts = text.split(/\n+/);
+  return parts
+    .filter((p, i) => i < 2 || (VALPOVO_RE.test(p) && !DRUGA_MJESTA_RE.test(p)) || (i === parts.length - 1 && !DRUGA_MJESTA_RE.test(p)))
+    .join('\n');
+}
+
 const MJESECI: Record<string, number> = {
   siječ: 1, sijec: 1, veljač: 2, veljac: 2, ožuj: 3, ozuj: 3, trav: 4, svib: 5, lip: 6,
   srp: 7, kolov: 8, ruj: 9, listop: 10, studen: 11, prosin: 12,
@@ -148,7 +159,7 @@ export async function fetchValpovstinaDocs(): Promise<
     const validUntil = future[future.length - 1];
     const text =
       `Neslužbeni portal valpovstina.info (sekundarni izvor) — objavljeno ${formatHr(published)}.\n` +
-      `${title}\n\n${body}`.slice(0, MAX_CHARS);
+      `${title}\n\n${samoValpovo(body)}`.slice(0, MAX_CHARS);
     docs.push({ url: p.link, title: `${title} (valpovstina.info)`, text, publishedAt: published, validUntil });
   }
   return docs;
