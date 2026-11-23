@@ -6,6 +6,8 @@
  *    izvora o Valpovu uz kratak prozor svježine (dailyFreshDays). Novi sadržaj
  *    ima prioritet; veliki se korpus osvježava rotacijom kroz uzastopna pokretanja.
  *  - Nedjeljom 02:00 UTC: bez parametra — veliki prolaz svih izvora (rezerva).
+ *  - Svaka 2 sata 05–21 UTC: ?scope=valpovstina — samo aktualne objave s
+ *    valpovstina.info (najave i obavijesti mijenjaju se tijekom dana).
  *  Oba prolaza najprije sinkroniziraju bazu turističkog vodiča (JSON s
  *  config.touristSourceUrl → lib/ingest/tourist.ts); greška tu ne ruši ingest.
  *
@@ -53,6 +55,23 @@ async function handle(req: Request): Promise<Response> {
   // osvježava rotacijom kroz uzastopna pokretanja.
   const params = new URL(req.url).searchParams;
   const scope = params.get('scope');
+
+  // scope=valpovstina → SAMO sinkronizacija valpovstina.info (svaka 2 sata, 6–22 h):
+  // najave (prekidi struje, događanja) mijenjaju se tijekom dana. Lagano, bez crawla.
+  if (scope === 'valpovstina') {
+    try {
+      const valpovstina = await syncValpovstina();
+      return new Response(JSON.stringify({ ok: true, scope, valpovstina }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e) {
+      console.error('[ingest] valpovstina.info nije sinkroniziran:', e);
+      return new Response(JSON.stringify({ ok: false, scope, error: e instanceof Error ? e.message : String(e) }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
   const isDaily = scope === 'daily' || scope === 'homepage';
   // Najciljanije: ?only=url1,url2 obrađuje SAMO te stranice (+ PDF/slike koje na
   // njima otkrije) i forsira obradu — npr. stranica Službenih glasnika i svi njezini
