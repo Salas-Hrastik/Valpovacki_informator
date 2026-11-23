@@ -22,6 +22,7 @@
 import { config } from '@/lib/config';
 import { runIngest } from '@/lib/ingest/pipeline';
 import { fetchTouristDb, syncTouristDocs, type TouristSyncStats } from '@/lib/ingest/tourist';
+import { syncValpovstina, type ValpovstinaSyncStats } from '@/lib/ingest/valpovstina';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -83,13 +84,24 @@ async function handle(req: Request): Promise<Response> {
     }
   }
 
+  // valpovstina.info (sekundarni izvor): samo aktualne objave o Valpovu; istekle se brišu.
+  let valpovstina: ValpovstinaSyncStats | { error: string } | undefined;
+  if (!onlyUrls && !explicitHosts) {
+    try {
+      valpovstina = await syncValpovstina();
+    } catch (e) {
+      console.error('[ingest] valpovstina.info nije sinkroniziran:', e);
+      valpovstina = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   // 280 s vlastitog limita (umanjeno za vrijeme sinkronizacije vodiča) ostavlja
   // prostor za uredno zatvaranje prije 300 s.
   const deadlineMs = 280_000 - (Date.now() - startedAt);
   const stats = await runIngest({ deadlineMs, onlyUrls, onlyHosts, freshDays });
 
   const scopeLabel = onlyUrls ? 'only' : (scope ?? (explicitHosts ? 'hosts' : 'full'));
-  return new Response(JSON.stringify({ ok: true, scope: scopeLabel, tourist, stats }), {
+  return new Response(JSON.stringify({ ok: true, scope: scopeLabel, tourist, valpovstina, stats }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }

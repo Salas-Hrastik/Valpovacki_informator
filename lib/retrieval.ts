@@ -216,10 +216,23 @@ export async function retrieve(
   const perUrl = new Map<string, number>();
   const final: RetrievedChunk[] = [];
   let budget = config.ragContextCharBudget;
-  for (const r of ordered) {
+  // valpovstina.info je SEKUNDARNI (neslužbeni) izvor: najviše SECONDARY_MAX isječaka,
+  // i to uvijek IZA službenih izvora (redoslijed u promptu nosi prioritet).
+  const isSecondary = (u: string) => u.startsWith('https://valpovstina.info/');
+  const secondary = ordered.filter((r) => isSecondary(r.url)).slice(0, SECONDARY_MAX);
+  const secondaryIds = new Set(secondary.map((r) => r.chunk_id));
+  const officialSlots = topK - secondary.length;
+  // Mjesto i u proračunu znakova (inače bi ga službeni isječci uvijek potrošili).
+  let reserve = secondary.reduce((n, r) => n + r.text.length, 0);
+  for (const r of [
+    ...ordered.filter((r) => !isSecondary(r.url)),
+    ...secondary,
+  ]) {
+    if (isSecondary(r.url) ? !secondaryIds.has(r.chunk_id) : final.length >= officialSlots) continue;
     const n = perUrl.get(r.url) ?? 0;
     if (n >= 5) continue; // do 5 isječaka po dokumentu (dulji dokumenti, popisi imena…)
-    if (r.text.length > budget) continue;
+    if (isSecondary(r.url)) reserve -= r.text.length;
+    if (r.text.length > budget - (isSecondary(r.url) ? 0 : Math.max(0, reserve))) continue;
     perUrl.set(r.url, n + 1);
     budget -= r.text.length;
     final.push(r);
@@ -351,6 +364,8 @@ const ZUPA_PATTERNS = [
   'sveti tjedan', 'uskrs', 'blagdan', 'advent', 'božić', 'bozic',
   'župa valpovo', 'zupa valpovo',
 ];
+const SECONDARY_MAX = 3;
+
 const ZUPA_VALPOVO_URLS = [
   'https://zupavalpo.wixsite.com/zupa-valpovo/%C5%BEupni-ured',
   'https://zupavalpo.wixsite.com/zupa-valpovo',
