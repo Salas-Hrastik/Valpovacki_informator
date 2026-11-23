@@ -95,6 +95,9 @@ export async function retrieve(
     council: isCouncilQuery(query)
       ? start('dohvat sjednica Gradskog vijeća', () => fetchLatestCouncilChunks(sb, 3, 4, threshold))
       : null,
+    natjecaji: isNatjecajQuery(query)
+      ? start('dohvat aktualnih natječaja', () => fetchRecentNatjecajChunks(sb, threshold))
+      : null,
   };
 
   // 1) Vektorsko pretraživanje (širi skup) — HNSW indeks, brzo.
@@ -171,6 +174,7 @@ export async function retrieve(
   await applyExtra(extras.zupa, true);
   await applyExtra(extras.svc, true);
   await applyExtra(extras.council, true);
+  await applyExtra(extras.natjecaji, true);
   await applyExtra(extras.programs, true);
   await applyExtra(extras.otpad, true);
 
@@ -489,6 +493,33 @@ async function fetchLatestCouncilChunks(
     .limit(limit);
   if (error || !docs || docs.length === 0) return [];
   return fetchChunksByUrls(sb, (docs as { url: string }[]).map((d) => d.url), chunksPerDoc, score);
+}
+
+// Upiti o NATJEČAJIMA / javnim pozivima ("ima li raspisanog natječaja", "natječaj za posao"):
+// vektor pogađa stare natječaje (isti tekst svake godine), pa dovlačimo i natječaje
+// objavljene u zadnjih NATJECAJ_DAYS dana, najnovije prvo. Rok procjenjuje model (pravilo 7b).
+const NATJECAJ_PATTERNS = ['natječa', 'natjeca', 'javni poziv', 'javnog poziva', 'javne pozive', 'oglas za', 'zapošljavanj', 'zaposljavanj'];
+const NATJECAJ_DAYS = 120;
+
+function isNatjecajQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return NATJECAJ_PATTERNS.some((p) => q.includes(p));
+}
+
+async function fetchRecentNatjecajChunks(
+  sb: ReturnType<typeof supabaseAdmin>,
+  score: number,
+): Promise<RetrievedChunk[]> {
+  const since = new Date(Date.now() - NATJECAJ_DAYS * 86400000).toISOString();
+  const { data: docs, error } = await sb
+    .from('dokumenti')
+    .select('url, published_at')
+    .or('title.ilike.%natječa%,title.ilike.%natjeca%,url.ilike.%natjecaj%,url.ilike.%javni-poziv%,title.ilike.%javni poziv%')
+    .gte('published_at', since)
+    .order('published_at', { ascending: false })
+    .limit(12);
+  if (error || !docs || docs.length === 0) return [];
+  return fetchChunksByUrls(sb, (docs as { url: string }[]).map((d) => d.url), 2, score);
 }
 
 /** Isječci zadanih dokumenata (po URL-u), najviše `chunksPerDoc` po dokumentu. */
