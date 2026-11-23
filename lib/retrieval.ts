@@ -191,6 +191,14 @@ export async function retrieve(
 
   // 4) Reranking — LLM presloži kandidate po stvarnoj relevantnosti (bira pravi
   // dokument među mnogo sličnih). Otporno na greške: vraća izvorni poredak ako zakaže.
+  // 3g) Pitanje o AKTUALNIM natječajima: zatvorene natječaje (i dokumente koji ih
+  // zatvaraju — otvaranje ponuda, odluka o odabiru, lista kandidata…) uklanjamo prije
+  // modela, jer ih on inače usput spominje (pravilo 8a). Na pitanje o prošlim ostaju.
+  if (isNatjecajQuery(query) && !isPastQuery(query)) {
+    const kept = dropClosedNatjecaji(candidates);
+    candidates.splice(0, candidates.length, ...kept);
+  }
+
   const ordered = await rerankChunks(query, candidates, Math.min(candidates.length, topK + 4));
 
   // 5) Deduplikacija po URL-u (najviše 3 isječka) + proračun konteksta, u redoslijedu
@@ -504,6 +512,44 @@ const NATJECAJ_DAYS = 120;
 function isNatjecajQuery(query: string): boolean {
   const q = query.toLowerCase();
   return NATJECAJ_PATTERNS.some((p) => q.includes(p));
+}
+
+// Pitanje izričito o prošlosti ("koji su natječaji bili", "rezultati natječaja").
+const PAST_RE = /\bbil[aieo]?\b|ranij|prošl|prosl|zatvoren|rezultat|odabran|odabir|ishod|tko je dobio/i;
+function isPastQuery(query: string): boolean {
+  return PAST_RE.test(query);
+}
+
+// Dokumenti koji označavaju da je natječaj ZATVOREN.
+const CLOSING_RE = /otvaranj\w* ponud|odluk\w* o odabir|lista kandidat|rezultat|obavijest\w* kandidat|poziv\w* (?:i obavijest )?kandidat|izvjesc\w* o proveden/;
+const KEY_STOP = new Set(
+  ('javno javni javnog javne otvaranje otvaranja ponuda ponude pristiglih pristigle natjecaj natjecaja natjecaju ' +
+    'odluka odluke odluku odabiru odabir lista liste kandidata kandidatima koji rezultati rezultat obavijest poziv ' +
+    'za na iz od do sa pdf compressed procelnik povjerenstvo gradonacelnik provedenom izvjesce')
+    .split(' '),
+);
+const foldKey = (s: string) => foldHr(s).replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Uklanja dokumente koji zatvaraju natječaj i natječaje na koje se odnose (prepoznaje ih
+ * po zajedničkim ključnim riječima naziva datoteke, npr. "advent valpovu 2026").
+ */
+function dropClosedNatjecaji(chunks: RetrievedChunk[]): RetrievedChunk[] {
+  const closingUrls = new Set<string>();
+  const closedKeys: string[][] = [];
+  for (const c of chunks) {
+    if (!CLOSING_RE.test(foldKey(`${c.title} ${c.url}`))) continue;
+    closingUrls.add(c.url);
+    const file = decodeURIComponent(c.url.split('/').filter(Boolean).pop() ?? '').replace(/\.pdf$/i, '');
+    const keys = foldKey(file).split(' ').filter((t) => t.length > 2 && !KEY_STOP.has(t));
+    if (keys.length >= 2) closedKeys.push(keys);
+  }
+  if (closingUrls.size === 0) return chunks;
+  return chunks.filter((c) => {
+    if (closingUrls.has(c.url)) return false;
+    const hay = ` ${foldKey(`${c.title} ${decodeURIComponent(c.url)}`)} `;
+    return !closedKeys.some((keys) => keys.every((k) => hay.includes(` ${k} `)));
+  });
 }
 
 async function fetchRecentNatjecajChunks(
